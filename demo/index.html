@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI像素冒险 - Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #1a1a2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+        }
+        .game-container {
+            text-align: center;
+        }
+        h1 {
+            color: #e94560;
+            margin-bottom: 20px;
+            font-size: 24px;
+            text-shadow: 2px 2px 0px #0f3460;
+        }
+        canvas {
+            border: 4px solid #16213e;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+        .controls {
+            margin-top: 20px;
+            color: #a8a8a8;
+            font-size: 14px;
+        }
+        .controls span {
+            background: #16213e;
+            padding: 5px 10px;
+            margin: 0 5px;
+            border-radius: 4px;
+        }
+        .status {
+            margin-top: 15px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            color: #fff;
+            font-size: 14px;
+        }
+        .status div {
+            background: #16213e;
+            padding: 8px 15px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🎮 AI像素冒险</h1>
+        <canvas id="gameCanvas" width="640" height="480"></canvas>
+        <div class="controls">
+            <span>↑↓←→ 移动</span>
+            <span>空格 确认</span>
+            <span>ESC 返回</span>
+        </div>
+        <div class="status">
+            <div>❤️ HP: <span id="hp">100</span>/100</div>
+            <div>⚔️ ATK: <span id="atk">25</span></div>
+            <div>💰 Gold: <span id="gold">0</span></div>
+            <div>📊 Level: <span id="level">1</span></div>
+        </div>
+    </div>
+
+    <script>
+        // ========== 游戏配置 ==========
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const TILE_SIZE = 32;
+        const MAP_WIDTH = 20;
+        const MAP_HEIGHT = 15;
+        const MOVE_DELAY = 150; // 移动延迟（毫秒）
+        
+        // ========== 游戏状态 ==========
+        let gameState = 'explore'; // explore, battle, dialogue, menu
+        let lastMoveTime = 0; // 上次移动时间
+        
+        // 玩家
+        let player = {
+            x: 10,
+            y: 7,
+            hp: 100,
+            maxHp: 100,
+            atk: 25,
+            gold: 0,
+            level: 1,
+            exp: 0,
+            direction: 'down',
+            animFrame: 0,
+            animTimer: 0
+        };
+        
+        // 地图数据 (0=草地, 1=树, 2=水, 3=路, 4=房子, 5=草丛, 6=花)
+        const map = [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,1],
+            [1,0,6,0,0,1,1,1,1,1,1,1,1,0,6,0,0,6,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,4,4,0,0,0,0,0,0,4,4,0,0,0,0,0,1],
+            [1,0,0,0,4,4,0,0,0,0,0,0,4,4,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,3,3,3,3,0,0,0,0,0,0,0,0,1],
+            [1,1,1,0,0,0,0,3,3,3,3,0,0,0,0,0,1,1,1,1],
+            [1,0,0,0,0,0,0,3,3,3,3,0,0,0,0,0,0,0,0,1],
+            [1,0,5,5,5,0,0,0,0,0,0,0,0,5,5,5,0,0,0,1],
+            [1,0,5,5,5,0,0,0,0,0,0,0,0,5,5,5,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,6,0,0,0,0,0,2,2,0,0,0,0,0,6,0,0,0,1],
+            [1,0,0,0,0,0,0,2,2,2,2,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        ];
+        
+        // NPC
+        let npcs = [
+            { x: 5, y: 4, name: '村长', dialogue: '欢迎来到像素村！小心草丛里的怪物...', direction: 'down' },
+            { x: 14, y: 4, name: '商人', dialogue: '要买点药水吗？10金币一瓶！', direction: 'down' },
+            { x: 3, y: 10, name: '猎人', dialogue: '东边的森林里有强大的怪物...', direction: 'right' }
+        ];
+        
+        // 怪物数据
+        let monsters = [
+            { name: '史莱姆', hp: 30, atk: 5, exp: 10, gold: 5, emoji: '🟢' },
+            { name: '蝙蝠', hp: 40, atk: 8, exp: 15, gold: 8, emoji: '🦇' },
+            { name: '狼', hp: 60, atk: 12, exp: 25, gold: 15, emoji: '🐺' },
+            { name: '骷髅兵', hp: 80, atk: 18, exp: 40, gold: 25, emoji: '💀' }
+        ];
+        
+        // 当前战斗状态
+        let currentBattle = null;
+        
+        // 对话状态
+        let currentDialogue = null;
+        
+        // 按键状态
+        let keys = {};
+        let keyPressed = {}; // 记录按键是否已处理
+        
+        // ========== 输入处理 ==========
+        document.addEventListener('keydown', (e) => {
+            e.preventDefault(); // 防止默认行为
+            keys[e.key] = true;
+            
+            // 只在按键第一次按下时处理
+            if (!keyPressed[e.key]) {
+                keyPressed[e.key] = true;
+                
+                if (gameState === 'explore') {
+                    if (e.key === ' ') {
+                        checkNPC();
+                    }
+                } else if (gameState === 'battle') {
+                    if (e.key === '1') battleAction('attack');
+                    if (e.key === '2') battleAction('heal');
+                    if (e.key === '3') battleAction('run');
+                } else if (gameState === 'dialogue') {
+                    if (e.key === ' ' || e.key === 'Escape') {
+                        gameState = 'explore';
+                        currentDialogue = null;
+                    }
+                }
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+            keyPressed[e.key] = false;
+        });
+        
+        // ========== 游戏逻辑 ==========
+        function update() {
+            if (gameState === 'explore') {
+                updatePlayer();
+                updateNPCs();
+                checkGrass();
+            }
+        }
+        
+        function updatePlayer() {
+            let now = Date.now();
+            if (now - lastMoveTime < MOVE_DELAY) return; // 移动延迟
+            
+            let moved = false;
+            
+            if (keys['ArrowUp']) {
+                player.direction = 'up';
+                if (canMoveTo(player.x, player.y - 1)) {
+                    player.y--;
+                    moved = true;
+                }
+            } else if (keys['ArrowDown']) {
+                player.direction = 'down';
+                if (canMoveTo(player.x, player.y + 1)) {
+                    player.y++;
+                    moved = true;
+                }
+            } else if (keys['ArrowLeft']) {
+                player.direction = 'left';
+                if (canMoveTo(player.x - 1, player.y)) {
+                    player.x--;
+                    moved = true;
+                }
+            } else if (keys['ArrowRight']) {
+                player.direction = 'right';
+                if (canMoveTo(player.x + 1, player.y)) {
+                    player.x++;
+                    moved = true;
+                }
+            }
+            
+            if (moved) {
+                lastMoveTime = now;
+                
+                // 动画
+                player.animFrame = (player.animFrame + 1) % 4;
+            }
+        }
+        
+        function canMoveTo(x, y) {
+            if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT) return false;
+            let tile = map[y][x];
+            return tile !== 1 && tile !== 2 && tile !== 4;
+        }
+        
+        function checkGrass() {
+            let tile = map[player.y][player.x];
+            if (tile === 5) {
+                if (Math.random() < 0.05) {
+                    startBattle();
+                }
+            }
+        }
+        
+        function checkNPC() {
+            let checkX = player.x;
+            let checkY = player.y;
+            
+            if (player.direction === 'up') checkY--;
+            if (player.direction === 'down') checkY++;
+            if (player.direction === 'left') checkX--;
+            if (player.direction === 'right') checkX++;
+            
+            for (let npc of npcs) {
+                if (npc.x === checkX && npc.y === checkY) {
+                    showDialogue(npc);
+                    return;
+                }
+            }
+        }
+        
+        function updateNPCs() {
+            for (let npc of npcs) {
+                if (Math.random() < 0.01) {
+                    let dir = Math.floor(Math.random() * 4);
+                    let newX = npc.x;
+                    let newY = npc.y;
+                    
+                    if (dir === 0) { newY--; npc.direction = 'up'; }
+                    if (dir === 1) { newY++; npc.direction = 'down'; }
+                    if (dir === 2) { newX--; npc.direction = 'left'; }
+                    if (dir === 3) { newX++; npc.direction = 'right'; }
+                    
+                    if (canMoveTo(newX, newY)) {
+                        if (newX !== player.x || newY !== player.y) {
+                            npc.x = newX;
+                            npc.y = newY;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // ========== 战斗系统 ==========
+        function startBattle() {
+            let monster = monsters[Math.floor(Math.random() * monsters.length)];
+            currentBattle = {
+                ...monster,
+                maxHp: monster.hp,
+                playerTurn: true
+            };
+            battleLog = [];
+            addBattleLog(`遭遇了${currentBattle.name}！`);
+            gameState = 'battle';
+        }
+        
+        function battleAction(action) {
+            if (!currentBattle || !currentBattle.playerTurn) return;
+            
+            if (action === 'attack') {
+                let damage = player.atk + Math.floor(Math.random() * 10);
+                currentBattle.hp -= damage;
+                addBattleLog(`你攻击了${currentBattle.name}，造成${damage}点伤害！`);
+                
+                if (currentBattle.hp <= 0) {
+                    player.exp += currentBattle.exp;
+                    player.gold += currentBattle.gold;
+                    addBattleLog(`击败了${currentBattle.name}！获得${currentBattle.exp}经验，${currentBattle.gold}金币`);
+                    
+                    if (player.exp >= player.level * 50) {
+                        player.level++;
+                        player.maxHp += 20;
+                        player.hp = player.maxHp;
+                        player.atk += 5;
+                        addBattleLog(`🎉 升级了！现在是Lv.${player.level}`);
+                    }
+                    
+                    setTimeout(() => {
+                        gameState = 'explore';
+                        currentBattle = null;
+                    }, 2000);
+                    return;
+                }
+                
+                currentBattle.playerTurn = false;
+                
+                setTimeout(() => {
+                    let damage = currentBattle.atk + Math.floor(Math.random() * 5);
+                    player.hp -= damage;
+                    addBattleLog(`${currentBattle.name}攻击了你，造成${damage}点伤害！`);
+                    
+                    if (player.hp <= 0) {
+                        addBattleLog('你被击败了...');
+                        setTimeout(() => {
+                            player.hp = player.maxHp;
+                            player.x = 10;
+                            player.y = 7;
+                            gameState = 'explore';
+                            currentBattle = null;
+                        }, 2000);
+                        return;
+                    }
+                    
+                    currentBattle.playerTurn = true;
+                }, 1000);
+                
+            } else if (action === 'heal') {
+                if (player.gold >= 10) {
+                    player.gold -= 10;
+                    let heal = 30 + Math.floor(Math.random() * 20);
+                    player.hp = Math.min(player.maxHp, player.hp + heal);
+                    addBattleLog(`使用药水，恢复了${heal}点HP！`);
+                    currentBattle.playerTurn = false;
+                    
+                    setTimeout(() => {
+                        let damage = currentBattle.atk + Math.floor(Math.random() * 5);
+                        player.hp -= damage;
+                        addBattleLog(`${currentBattle.name}攻击了你，造成${damage}点伤害！`);
+                        currentBattle.playerTurn = true;
+                    }, 1000);
+                } else {
+                    addBattleLog('金币不足！');
+                }
+            } else if (action === 'run') {
+                if (Math.random() < 0.5) {
+                    addBattleLog('逃跑成功！');
+                    setTimeout(() => {
+                        gameState = 'explore';
+                        currentBattle = null;
+                    }, 1000);
+                } else {
+                    addBattleLog('逃跑失败！');
+                    currentBattle.playerTurn = false;
+                    
+                    setTimeout(() => {
+                        let damage = currentBattle.atk + Math.floor(Math.random() * 5);
+                        player.hp -= damage;
+                        addBattleLog(`${currentBattle.name}攻击了你，造成${damage}点伤害！`);
+                        currentBattle.playerTurn = true;
+                    }, 1000);
+                }
+            }
+            
+            updateUI();
+        }
+        
+        let battleLog = [];
+        function addBattleLog(msg) {
+            battleLog.unshift(msg);
+            if (battleLog.length > 5) battleLog.pop();
+        }
+        
+        // ========== 对话系统 ==========
+        function showDialogue(npc) {
+            currentDialogue = {
+                name: npc.name,
+                text: npc.dialogue
+            };
+            gameState = 'dialogue';
+        }
+        
+        // ========== 渲染 ==========
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (gameState === 'explore' || gameState === 'dialogue') {
+                drawMap();
+                drawNPCs();
+                drawPlayer();
+                
+                if (currentDialogue) {
+                    drawDialogue();
+                }
+            } else if (gameState === 'battle') {
+                drawBattle();
+            }
+        }
+        
+        function drawMap() {
+            for (let y = 0; y < MAP_HEIGHT; y++) {
+                for (let x = 0; x < MAP_WIDTH; x++) {
+                    let tile = map[y][x];
+                    let color;
+                    
+                    switch(tile) {
+                        case 0: color = '#4a7c59'; break;
+                        case 1: color = '#2d5a27'; break;
+                        case 2: color = '#3498db'; break;
+                        case 3: color = '#95a5a6'; break;
+                        case 4: color = '#8b4513'; break;
+                        case 5: color = '#6b8e23'; break;
+                        case 6: color = '#ff69b4'; break;
+                    }
+                    
+                    ctx.fillStyle = color;
+                    ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    
+                    ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+                    ctx.strokeRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    
+                    if (tile === 1) {
+                        ctx.fillStyle = '#1a4d1a';
+                        ctx.beginPath();
+                        ctx.arc(x * TILE_SIZE + 16, y * TILE_SIZE + 16, 12, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    if (tile === 6) {
+                        ctx.fillStyle = '#ff1493';
+                        ctx.beginPath();
+                        ctx.arc(x * TILE_SIZE + 16, y * TILE_SIZE + 16, 6, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+        
+        function drawPlayer() {
+            let x = player.x * TILE_SIZE;
+            let y = player.y * TILE_SIZE;
+            
+            // 身体
+            ctx.fillStyle = '#3498db';
+            ctx.fillRect(x + 8, y + 8, 16, 16);
+            
+            // 头
+            ctx.fillStyle = '#f39c12';
+            ctx.beginPath();
+            ctx.arc(x + 16, y + 8, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 方向指示
+            ctx.fillStyle = '#e74c3c';
+            if (player.direction === 'up') ctx.fillRect(x + 14, y + 2, 4, 4);
+            if (player.direction === 'down') ctx.fillRect(x + 14, y + 26, 4, 4);
+            if (player.direction === 'left') ctx.fillRect(x + 2, y + 14, 4, 4);
+            if (player.direction === 'right') ctx.fillRect(x + 26, y + 14, 4, 4);
+        }
+        
+        function drawNPCs() {
+            for (let npc of npcs) {
+                let x = npc.x * TILE_SIZE;
+                let y = npc.y * TILE_SIZE;
+                
+                ctx.fillStyle = '#e74c3c';
+                ctx.fillRect(x + 8, y + 8, 16, 16);
+                
+                ctx.fillStyle = '#f1c40f';
+                ctx.beginPath();
+                ctx.arc(x + 16, y + 8, 8, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = '#fff';
+                ctx.font = '10px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(npc.name, x + 16, y - 5);
+            }
+        }
+        
+        function drawDialogue() {
+            ctx.fillStyle = 'rgba(0,0,0,0.8)';
+            ctx.fillRect(50, 350, 540, 100);
+            
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(50, 350, 540, 100);
+            
+            ctx.fillStyle = '#f1c40f';
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(currentDialogue.name, 70, 375);
+            
+            ctx.fillStyle = '#fff';
+            ctx.font = '14px Arial';
+            ctx.fillText(currentDialogue.text, 70, 400);
+            
+            ctx.fillStyle = '#888';
+            ctx.font = '12px Arial';
+            ctx.fillText('按空格键继续', 70, 430);
+        }
+        
+        function drawBattle() {
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, 640, 480);
+            
+            ctx.fillStyle = '#fff';
+            ctx.font = '60px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(currentBattle.emoji, 320, 150);
+            
+            ctx.fillStyle = '#e74c3c';
+            ctx.font = '18px Arial';
+            ctx.fillText(currentBattle.name, 320, 200);
+            ctx.fillStyle = '#fff';
+            ctx.font = '14px Arial';
+            ctx.fillText(`HP: ${currentBattle.hp}/${currentBattle.maxHp}`, 320, 225);
+            
+            ctx.fillStyle = '#3498db';
+            ctx.font = '18px Arial';
+            ctx.fillText('勇者', 320, 300);
+            ctx.fillStyle = '#fff';
+            ctx.font = '14px Arial';
+            ctx.fillText(`HP: ${player.hp}/${player.maxHp}`, 320, 325);
+            
+            ctx.fillStyle = '#f1c40f';
+            ctx.font = '16px Arial';
+            ctx.fillText('[1] 攻击  [2] 药水(10金)  [3] 逃跑', 320, 400);
+            
+            ctx.fillStyle = '#888';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'left';
+            for (let i = 0; i < battleLog.length; i++) {
+                ctx.fillText(battleLog[i], 50, 440 + i * 15);
+            }
+        }
+        
+        // ========== UI更新 ==========
+        function updateUI() {
+            document.getElementById('hp').textContent = player.hp;
+            document.getElementById('atk').textContent = player.atk;
+            document.getElementById('gold').textContent = player.gold;
+            document.getElementById('level').textContent = player.level;
+        }
+        
+        // ========== 游戏循环 ==========
+        function gameLoop() {
+            update();
+            draw();
+            updateUI();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // 启动游戏
+        gameLoop();
+    </script>
+</body>
+</html>

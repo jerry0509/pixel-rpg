@@ -1,0 +1,92 @@
+/* 主样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #1a1a2e;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+}
+
+#game-container {
+    text-align: center;
+    position: relative;
+}
+
+h1 {
+    color: #e94560;
+    margin-bottom: 10px;
+    font-size: 24px;
+    text-shadow: 2px 2px 0px #0f3460;
+}
+
+#gameCanvas {
+    border: 4px solid #16213e;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    display: block;
+    margin: 0 auto;
+    background: #000;
+}
+
+#controls {
+    margin-top: 10px;
+    color: #a8a8a8;
+    font-size: 14px;
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+#controls span {
+    background: #16213e;
+    padding: 5px 10px;
+    border-radius: 4px;
+}
+
+#status-bar {
+    margin-top: 10px;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    color: #fff;
+    font-size: 14px;
+}
+
+.status-item {
+    background: #16213e;
+    padding: 8px 15px;
+    border-radius: 4px;
+}
+
+.status-item span {
+    color: #f1c40f;
+    font-weight: bold;
+}
+
+/* 响应式 */
+@media (max-width: 1400px) {
+    #gameCanvas {
+        width: 960px;
+        height: 576px;
+    }
+}
+
+@media (max-width: 1000px) {
+    #gameCanvas {
+        width: 640px;
+        height: 384px;
+    }
+    
+    #status-bar {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+}

@@ -1,0 +1,1964 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI像素冒险 - 口袋妖怪风格RPG</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;display:flex;flex-direction:column;align-items:center;min-height:100vh;font-family:'Courier New',monospace;overflow:hidden}
+#game-container{position:relative;margin-top:8px}
+canvas{border:3px solid #16213e;image-rendering:pixelated;image-rendering:crisp-edges;display:block}
+#controls{margin-top:6px;color:#888;font-size:11px;text-align:center}
+#controls span{background:#16213e;padding:2px 6px;margin:0 2px;border-radius:3px}
+#status-bar{margin-top:4px;display:flex;justify-content:center;gap:8px;color:#fff;font-size:11px}
+.status-item{background:#16213e;padding:3px 8px;border-radius:3px}
+</style>
+</head>
+<body>
+<div id="game-container">
+<canvas id="gameCanvas" width="1280" height="768"></canvas>
+<div id="controls">
+<span>↑↓←→ 移动</span><span>Shift 加速跑</span><span>空格 对话</span><span>ESC 菜单</span>
+<span>I 背包</span><span>M 地图</span><span>S 存档</span>
+</div>
+<div id="status-bar">
+<div class="status-item">HP:<span id="hp">100</span>/<span id="max-hp">100</span></div>
+<div class="status-item">MP:<span id="mp">50</span>/<span id="max-mp">50</span></div>
+<div class="status-item">ATK:<span id="atk">10</span></div>
+<div class="status-item">DEF:<span id="def">5</span></div>
+<div class="status-item">Gold:<span id="gold">100</span></div>
+<div class="status-item">Lv:<span id="level">1</span></div>
+<div class="status-item">EXP:<span id="exp">0</span>/<span id="next-exp">50</span></div>
+</div>
+</div>
+
+<script>
+// ============================================================
+// 配置
+// ============================================================
+const CFG={
+W:1280,H:768,TS:64,MW:100,MH:80,VX:20,VY:12,
+MOVE_DELAY:100,RUN_DELAY:50,
+T:{GRASS:0,TREE:1,WATER:2,PATH:3,WALL:4,DOOR:5,TGRASS:6,FLOWER:7,BRIDGE:8,MTN:10,LAVA:11,SWAMP:12,CHEST:13,TORCH:14,SIGN:15,ALTAR:18,FOUNTAIN:19,DEV_HOUSE:20,FLOOR:21,IWALL:22,EXIT:23,BOOK:24,BED:25,COUNTER:26,ANVIL:27,ROOF:28,GATE:29},
+ELEM:{fire:{strong:'ice',weak:'water'},ice:{strong:'thunder',weak:'fire'},thunder:{strong:'water',weak:'ice'},water:{strong:'fire',weak:'thunder'},light:{strong:'dark',weak:'dark'},dark:{strong:'light',weak:'light'},poison:{strong:'normal',weak:'fire'},normal:{strong:'',weak:''}},
+ENC_RATE:0.05,CRIT:0.1,CRIT_M:1.5,ESC:0.5
+};
+
+// ============================================================
+// 像素画工具函数
+// ============================================================
+function px(ctx,x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(x,y,w,h)}
+
+// ============================================================
+// 技能数据
+// ============================================================
+const SKILLS=[
+{id:'atk',name:'普通攻击',type:'phys',pow:1.0,elem:'normal',mp:0,lv:1},
+{id:'heavy',name:'重击',type:'phys',pow:1.5,elem:'normal',mp:5,lv:3,crit:0.3},
+{id:'wind',name:'旋风斩',type:'phys',pow:0.8,elem:'normal',mp:8,lv:5},
+{id:'fire',name:'火球术',type:'magic',pow:1.2,elem:'fire',mp:12,lv:7},
+{id:'ice',name:'冰冻术',type:'magic',pow:1.0,elem:'ice',mp:12,lv:9,status:'freeze'},
+{id:'thunder',name:'雷电术',type:'magic',pow:1.8,elem:'thunder',mp:20,lv:12},
+{id:'heal',name:'治愈术',type:'heal',pow:0.3,elem:'normal',mp:10,lv:1},
+{id:'shield',name:'护盾术',type:'buff',elem:'normal',mp:15,lv:4,status:'shield'},
+{id:'rage',name:'狂暴',type:'buff',elem:'normal',mp:15,lv:6,status:'berserk'},
+{id:'poison',name:'毒刃',type:'phys',pow:0.8,elem:'poison',mp:10,lv:8,status:'poison'},
+{id:'holy',name:'圣光',type:'magic',pow:2.0,elem:'light',mp:25,lv:15},
+{id:'ulti',name:'终极斩',type:'phys',pow:3.0,elem:'normal',mp:30,lv:18,hpCost:0.1}
+];
+
+// ============================================================
+// 物品数据
+// ============================================================
+const ITEMS={
+potion_s:{name:'小药水',type:'c',eff:'heal',val:50,price:20},
+potion_m:{name:'中药水',type:'c',eff:'heal',val:150,price:50},
+potion_l:{name:'大药水',type:'c',eff:'heal',val:300,price:100},
+mp_potion:{name:'蓝药水',type:'c',eff:'mp',val:50,price:30},
+antidote:{name:'解毒草',type:'c',eff:'cure',val:'poison',price:30},
+thaw:{name:'解冻石',type:'c',eff:'cure',val:'freeze',price:30},
+revive:{name:'复活药',type:'c',eff:'revive',price:200},
+atk_pot:{name:'攻击药水',type:'c',eff:'buff_atk',val:0.3,dur:3,price:80},
+def_pot:{name:'防御药水',type:'c',eff:'buff_def',val:0.3,dur:3,price:80},
+escape:{name:'逃跑卷轴',type:'c',eff:'escape',price:50},
+ball:{name:'精灵球',type:'c',eff:'catch',price:100},
+w_sword:{name:'木剑',type:'e',slot:'weapon',atk:5,price:50},
+i_sword:{name:'铁剑',type:'e',slot:'weapon',atk:15,price:200},
+s_sword:{name:'钢剑',type:'e',slot:'weapon',atk:30,price:500},
+f_sword:{name:'火焰剑',type:'e',slot:'weapon',atk:50,elem:'fire',price:1000},
+l_sword:{name:'传说之剑',type:'e',slot:'weapon',atk:100,price:5000},
+egg_sword:{name:'彩蛋剑',type:'e',slot:'weapon',atk:999,price:0},
+genesis_sword:{name:'创世之剑',type:'e',slot:'weapon',atk:999,price:0},
+cloth:{name:'布甲',type:'e',slot:'armor',def:5,price:50},
+leather:{name:'皮甲',type:'e',slot:'armor',def:15,price:200},
+iron_arm:{name:'铁甲',type:'e',slot:'armor',def:30,price:500},
+dragon_arm:{name:'龙鳞甲',type:'e',slot:'armor',def:60,price:2000},
+l_armor:{name:'传说铠甲',type:'e',slot:'armor',def:100,price:5000},
+herb_ring:{name:'草药戒指',type:'e',slot:'acc',eff:'regen',val:0.05,price:300},
+pow_ring:{name:'力量戒指',type:'e',slot:'acc',atkBonus:0.2,price:500},
+guard_ring:{name:'守护戒指',type:'e',slot:'acc',defBonus:0.2,price:500},
+spd_ring:{name:'速度戒指',type:'e',slot:'acc',spdBonus:0.3,price:800},
+l_ring:{name:'传说戒指',type:'e',slot:'acc',atkBonus:0.1,defBonus:0.1,price:5000}
+};
+
+const MATS={
+slime_j:{name:'粘液',p:5},butter_d:{name:'鳞粉',p:3},wolf_p:{name:'兽皮',p:8},
+bat_w:{name:'蝙蝠翼',p:12},snake_g:{name:'蛇胆',p:15},leaf:{name:'生命之叶',p:20},
+fire_s:{name:'火鳞片',p:25},rock_c:{name:'岩石核',p:30},fire_f:{name:'火焰羽毛',p:35},
+bone:{name:'骨头',p:40},dark_s:{name:'暗影碎片',p:55},m_book:{name:'魔法书',p:60},
+croc_s:{name:'鳄鱼皮',p:70},poison_o:{name:'毒雾珠',p:75},garg_f:{name:'石像碎片',p:80},
+ancient_w:{name:'远古武器',p:85},dragon_b:{name:'龙血',p:100},dk_armor:{name:'龙骑士铠甲',p:120},
+boar_t:{name:'野猪牙',p:100},wolf_kp:{name:'狼王皮',p:200},dragon_sc:{name:'龙鳞',p:400},
+demon_h:{name:'魔王之角',p:800},swamp_h:{name:'沼泽之心',p:1000},ancient_c:{name:'远古核心',p:1200},
+ldragon_s:{name:'传说龙鳞',p:1500},genesis_k:{name:'创世之钥',p:0}
+};
+
+// ============================================================
+// 怪物数据
+// ============================================================
+const MONS={
+slime:{n:'史莱姆',e:'🟢',hp:20,atk:5,def:2,exp:10,gold:5,el:'normal',d:['slime_j'],cr:0.5},
+butterfly:{n:'蝴蝶',e:'🦋',hp:15,atk:3,def:1,exp:8,gold:3,el:'normal',d:['butter_d'],cr:0.6},
+wolf:{n:'小狼',e:'🐺',hp:30,atk:8,def:3,exp:15,gold:8,el:'normal',d:['wolf_p'],cr:0.4},
+boar:{n:'野猪',e:'🐗',hp:45,atk:12,def:5,exp:20,gold:10,el:'normal',d:['wolf_p'],cr:0.35},
+bat:{n:'蝙蝠',e:'🦇',hp:40,atk:12,def:5,exp:20,gold:12,el:'dark',d:['bat_w'],cr:0.45},
+snake:{n:'毒蛇',e:'🐍',hp:50,atk:15,def:6,exp:25,gold:15,el:'poison',d:['snake_g'],cr:0.35},
+treant:{n:'树精',e:'🌳',hp:80,atk:18,def:12,exp:35,gold:20,el:'normal',d:['leaf'],cr:0.25},
+fsprite:{n:'森林精灵',e:'🧚',hp:35,atk:10,def:3,exp:18,gold:12,el:'normal',d:['leaf'],cr:0.4},
+fsalam:{n:'火蜥蜴',e:'🦎',hp:100,atk:25,def:15,exp:40,gold:25,el:'fire',d:['fire_s'],cr:0.25},
+rgolem:{n:'岩石怪',e:'🗿',hp:150,atk:20,def:30,exp:50,gold:30,el:'normal',d:['rock_c'],cr:0.2},
+fbird:{n:'火焰鸟',e:'🐦',hp:120,atk:35,def:10,exp:55,gold:35,el:'fire',d:['fire_f'],cr:0.2},
+mslime:{n:'岩浆史莱姆',e:'🔴',hp:80,atk:22,def:8,exp:30,gold:18,el:'fire',d:['fire_s'],cr:0.3},
+skeleton:{n:'骷髅兵',e:'💀',hp:180,atk:35,def:20,exp:60,gold:40,el:'dark',d:['bone'],cr:0.2},
+dknight:{n:'暗影骑士',e:'🗡️',hp:250,atk:45,def:35,exp:80,gold:55,el:'dark',d:['dark_s'],cr:0.15},
+necro:{n:'死灵法师',e:'🧙',hp:200,atk:50,def:15,exp:90,gold:60,el:'dark',d:['m_book'],cr:0.15},
+ghost:{n:'幽灵',e:'👻',hp:120,atk:30,def:5,exp:45,gold:30,el:'dark',d:['dark_s'],cr:0.3},
+scroc:{n:'沼泽巨鳄',e:'🐊',hp:300,atk:55,def:40,exp:100,gold:70,el:'poison',d:['croc_s'],cr:0.15},
+psprite:{n:'毒雾精灵',e:'👾',hp:250,atk:60,def:25,exp:110,gold:75,el:'poison',d:['poison_o'],cr:0.15},
+sslime:{n:'沼泽史莱姆',e:'🟤',hp:200,atk:40,def:20,exp:70,gold:45,el:'poison',d:['poison_o'],cr:0.25},
+gargoyle:{n:'石像鬼',e:'🗿',hp:400,atk:50,def:60,exp:120,gold:80,el:'normal',d:['garg_f'],cr:0.1},
+awarrior:{n:'远古战士',e:'⚔️',hp:350,atk:65,def:45,exp:130,gold:85,el:'normal',d:['ancient_w'],cr:0.1},
+statue:{n:'石像',e:'🗽',hp:500,atk:40,def:80,exp:100,gold:60,el:'normal',d:['garg_f'],cr:0.08},
+dkin:{n:'龙裔',e:'🐲',hp:500,atk:70,def:50,exp:150,gold:100,el:'fire',d:['dragon_b'],cr:0.1},
+dknight_d:{n:'龙骑士',e:'🛡️',hp:600,atk:80,def:60,exp:180,gold:120,el:'fire',d:['dk_armor'],cr:0.08},
+fwyrm:{n:'火龙蜥',e:'🔥',hp:450,atk:65,def:45,exp:140,gold:90,el:'fire',d:['fire_s'],cr:0.12}
+};
+
+const BOSS={
+boar_k:{n:'野猪王',e:'🐗',hp:200,atk:25,def:15,exp:100,gold:100,el:'normal',weak:'fire',d:['boar_t']},
+wolf_k:{n:'狼王',e:'🐺',hp:400,atk:40,def:25,exp:200,gold:200,el:'dark',weak:'light',d:['wolf_kp']},
+fire_d:{n:'火龙',e:'🐉',hp:800,atk:60,def:40,exp:400,gold:400,el:'fire',weak:'water',d:['dragon_sc']},
+demon_k:{n:'魔王',e:'👹',hp:1500,atk:80,def:50,exp:800,gold:800,el:'dark',weak:'light',d:['demon_h']},
+swamp_k:{n:'沼泽之王',e:'🐊',hp:2000,atk:90,def:60,exp:1000,gold:1000,el:'poison',weak:'fire',d:['swamp_h']},
+golem:{n:'远古巨像',e:'🗿',hp:2500,atk:100,def:80,exp:1200,gold:1200,el:'normal',weak:'thunder',d:['ancient_c']},
+dragon:{n:'远古巨龙',e:'🐲',hp:3000,atk:120,def:90,exp:1500,gold:1500,el:'fire',weak:'ice',d:['ldragon_s']},
+dev:{n:'游戏开发者',e:'🎮',hp:9999,atk:200,def:150,exp:9999,gold:9999,el:'normal',weak:null,d:['genesis_sword'],isFinal:true}
+};
+
+// ============================================================
+// NPC数据
+// ============================================================
+const NPCS={
+chief:{n:'村长',x:75,y:22,m:'village',dir:'down',
+d:['欢迎来到新手村！这里是世界上最安全的地方...','...除了村口那只史莱姆，它昨天偷吃了我的早餐。','对了，你知道吗？森林深处有个神秘祭坛...','嘘！别告诉别人是我告诉你的。'],
+fd:['你变强了不少啊！来，这个给你。','其实...那间工作室的门，需要8个Boss的掉落物才能打开。']},
+merchant:{n:'商人',x:50,y:34,m:'village',dir:'down',
+d:['欢迎光临！要买点什么吗？','我这里什么都有，价格公道！','蓝药水要不要？恢复MP的，30金币一瓶！'],
+fd:['看在老顾客份上，给你打个折！']},
+innkeeper:{n:'旅馆老板',x:75,y:57,m:'village',dir:'down',
+d:['住一晚10金币，包早餐。','你有没有觉得这游戏有点怪？','比如...为什么我们都能说话？','算了，别想太多，睡吧。'],
+fd:['给你留了最好的房间！']},
+blacksmith:{n:'铁匠',x:20,y:57,m:'village',dir:'down',
+d:['我这把剑可是祖传的！','我爷爷的爷爷的爷爷...','反正很厉害就是了！'],
+fd:['我可以帮你打造更强的武器！']},
+hunter:{n:'猎人',x:30,y:35,m:'grassland',dir:'down',
+d:['嘘！别吓跑我的猎物！','野猪王最怕火！用火属性攻击能打出双倍伤害！'],
+fd:['草原东边有个隐藏的沼泽入口...']},
+traveler:{n:'迷路的旅人',x:50,y:30,m:'forest',dir:'down',
+d:['终于见到人了！我在这里迷路三天了！','狼王怕光属性攻击。'],
+fd:['森林深处有个通往火山的密道...']},
+hermit:{n:'隐士',x:75,y:55,m:'forest',dir:'down',
+d:['年轻人，你想变强吗？','火克冰，冰克雷，雷克水，水克火。','光与暗互相克制。'],
+fd:['隐藏地图里有传说装备的碎片...']},
+elder:{n:'神秘老人',x:50,y:50,m:'swamp',dir:'down',
+d:['你找到了这里...很好。','沼泽之王怕火，但它的毒比火更可怕。'],
+fd:['我是这个游戏的测试员。游戏上线后我就被困在这里了。']},
+miner:{n:'矿工',x:40,y:50,m:'volcano',dir:'down',
+d:['火龙就住在火山口，它怕水！','用水属性攻击它，能打出双倍伤害！'],
+fd:['火山底层有个通往远古遗迹的入口...']},
+sage:{n:'火焰贤者',x:65,y:35,m:'volcano',dir:'down',
+d:['火焰是毁灭，也是重生。','你需要先打败火龙，获得龙鳞。'],
+fd:['你已经证明了自己。']},
+princess:{n:'被囚公主',x:80,y:30,m:'castle',dir:'down',
+d:['终于有人来救我了！','魔王怕光属性攻击！'],
+fd:['你就是我的英雄！']},
+swordsmith:{n:'铸剑师',x:40,y:60,m:'castle',dir:'down',
+d:['我可以帮你打造传说武器！','需要材料：火龙鳞、狼王牙、魔王角...'],
+fd:['传说之剑完成了！']},
+healer:{n:'神秘药师',x:60,y:40,m:'swamp',dir:'down',
+d:['欢迎来到迷雾沼泽...','沼泽之王怕火。'],
+fd:['我教你制作解毒秘方！']},
+guardian:{n:'古代守护者',x:50,y:30,m:'ruins',dir:'down',
+d:['你找到了这里...看来你不是普通人。','远古巨像怕雷属性攻击。'],
+fd:['接受远古的祝福吧！']},
+dragon_e:{n:'龙族长老',x:50,y:30,m:'dragon',dir:'down',
+d:['你终于来了...我等了你很久。','远古巨龙怕冰属性攻击。'],
+fd:['这是龙族的宝物，收下吧。']},
+wander_merchant:{n:'流浪商人',x:60,y:45,m:'grassland',dir:'down',
+d:['嘘...我这里有好东西。','别告诉别人我在这里。','精灵球100金币，要不要？'],
+fd:['看你是老顾客，送你一个精灵球！']}
+};
+
+// ============================================================
+// 地图定义
+// ============================================================
+const MAPS={
+village:{n:'新手村',w:100,h:80,tp:[{x:49,y:78,t:'grassland',tx:49,ty:1}],
+npcs:['chief','merchant','innkeeper','blacksmith'],ma:[],boss:null,ar:0},
+grassland:{n:'翡翠草原',w:100,h:80,
+tp:[{x:49,y:0,t:'village',tx:49,ty:78},{x:99,y:40,t:'forest',tx:1,ty:40}],
+npcs:['hunter','wander_merchant'],ma:[{x:20,y:20,w:60,h:40,m:['slime','butterfly','wolf','boar']}],
+boss:{id:'boar_k',x:70,y:60},ar:0.05},
+forest:{n:'幽暗森林',w:100,h:80,
+tp:[{x:0,y:40,t:'grassland',tx:98,ty:40},{x:99,y:40,t:'volcano',tx:1,ty:40}],
+npcs:['traveler','hermit'],ma:[{x:10,y:10,w:80,h:60,m:['bat','snake','treant','fsprite']}],
+boss:{id:'wolf_k',x:80,y:50},ar:0.06},
+volcano:{n:'烈焰火山',w:100,h:80,
+tp:[{x:0,y:40,t:'forest',tx:98,ty:40},{x:99,y:40,t:'castle',tx:1,ty:40}],
+npcs:['miner','sage'],ma:[{x:10,y:10,w:80,h:60,m:['fsalam','rgolem','fbird','mslime']}],
+boss:{id:'fire_d',x:50,y:20},ar:0.06},
+castle:{n:'魔王城堡',w:100,h:80,
+tp:[{x:0,y:40,t:'volcano',tx:98,ty:40}],
+npcs:['princess','swordsmith'],ma:[{x:10,y:10,w:80,h:60,m:['skeleton','dknight','necro','ghost']}],
+boss:{id:'demon_k',x:80,y:15},ar:0.07},
+swamp:{n:'迷雾沼泽',w:100,h:80,
+tp:[{x:0,y:40,t:'grassland',tx:96,ty:76}],
+npcs:['healer','elder'],ma:[{x:10,y:10,w:80,h:60,m:['scroc','psprite','sslime']}],
+boss:{id:'swamp_k',x:50,y:50},ar:0.05},
+ruins:{n:'远古遗迹',w:100,h:80,
+tp:[{x:0,y:40,t:'volcano',tx:86,ty:66}],
+npcs:['guardian'],ma:[{x:10,y:10,w:80,h:60,m:['gargoyle','awarrior','statue']}],
+boss:{id:'golem',x:50,y:50},ar:0.05},
+dragon:{n:'龙之巢穴',w:100,h:80,
+tp:[{x:0,y:40,t:'castle',tx:86,ty:10}],
+npcs:['dragon_e'],ma:[{x:10,y:10,w:80,h:60,m:['dkin','dknight_d','fwyrm']}],
+boss:{id:'dragon',x:50,y:50},ar:0.06}
+};
+
+// 室内地图
+const INTERIORS={
+// 主角家 - 有床、书架、桌子、椅子
+player_home:{n:'主角家',w:14,h:12,ret:'village',rx:18,ry:19,
+t:[
+[28,28,28,28,28,28,28,28,28,28,28,28,28,28],
+[22,21,21,21,21,21,21,21,21,21,21,21,21,22],
+[22,21,25,25,21,21,21,21,21,24,24,21,21,22],
+[22,21,25,25,21,21,21,21,21,24,24,21,21,22],
+[22,21,21,21,21,21,21,21,21,21,21,21,21,22],
+[22,21,21,21,26,26,21,26,26,21,21,21,21,22],
+[22,21,21,21,21,21,21,21,21,21,21,21,21,22],
+[22,21,24,21,21,21,21,21,21,21,21,24,21,22],
+[22,21,24,21,21,21,21,21,21,21,21,24,21,22],
+[22,21,21,21,21,21,21,21,21,21,21,21,21,22],
+[22,21,21,21,21,21,23,21,21,21,21,21,21,22],
+[22,22,22,22,22,22,22,22,22,22,22,22,22,22]]},
+// 村长家 - 有书架、桌子、椅子
+chief_home:{n:'村长家',w:14,h:12,ret:'village',rx:75,ry:21,
+t:[
+[28,28,28,28,28,28,28,28,28,28,28,28,28,28],
+[22,21,21,21,21,21,21,21,21,21,21,21,21,22],
+[22,24,24,21,21,21,21,21,21,21,24,24,21,22],
+[22,24,24,21,21,21,21,21,21,21,24,24,21,22],
+[22,21,21,21,21,21,21,21,21,21,21,21,21,22],
+[22,21,21,21,26,26,26,26,21,21,21,21,21,22],
+[22,21,21,21,26,21,21,26,21,21,21,21,21,22],
+[22,21,21,21,26,26,26,26,21,21,21,21,21,22],
+[22,21,21,21,21,21,21,21,21,21,21,21,21,22],
+[22,21,24,21,21,21,21,21,21,21,21,24,21,22],
+[22,21,21,21,21,21,23,21,21,21,21,21,21,22],
+[22,22,22,22,22,22,22,22,22,22,22,22,22,22]]},
+// 商人屋 - 有柜台、货架
+shop:{n:'商人屋',w:14,h:12,ret:'village',rx:50,ry:33,
+t:[
+[28,28,28,28,28,28,28,28,28,28,28,28,28,28],
+[22,21,21,21,21,21,21,21,21,21,21,21,21,22],
+[22,24,24,24,21,21,21,21,21,24,24,24,21,22],
+[22,21,21,21,21,21,21,21,21,21,21,21,21,22],
+[22,21,21,21,21,21,21,21,21,21,21,21,21,22],
+[22,21,26,26,26,26,26,26,26,26,21,21,21,22],
+[22,21,21,21,21,21,21,21,21,21,21,21,21,22],
+[22,21,21,21,21,21,21,21,21,21,21,21,21,22],
+[22,21,21,21,21,21,21,21,21,21,21,21,21,22],
+[22,21,24,24,21,21,21,21,21,24,24,21,21,22],
+[22,21,21,21,21,21,23,21,21,21,21,21,21,22],
+[22,22,22,22,22,22,22,22,22,22,22,22,22,22]]},
+// 旅馆 - 有床、桌子、椅子
+inn:{n:'旅馆',w:14,h:12,ret:'village',rx:75,ry:56,
+t:[
+[28,28,28,28,28,28,28,28,28,28,28,28,28,28],
+[22,21,21,21,21,21,21,21,21,21,21,21,21,22],
+[22,21,25,25,21,21,21,21,21,25,25,21,21,22],
+[22,21,25,25,21,21,21,21,21,25,25,21,21,22],
+[22,21,21,21,21,21,21,21,21,21,21,21,21,22],
+[22,21,21,21,26,26,21,26,26,21,21,21,21,22],
+[22,21,21,21,21,21,21,21,21,21,21,21,21,22],
+[22,21,21,21,26,26,21,26,26,21,21,21,21,22],
+[22,21,21,21,21,21,21,21,21,21,21,21,21,22],
+[22,21,25,25,21,21,21,21,21,25,25,21,21,22],
+[22,21,21,21,21,21,23,21,21,21,21,21,21,22],
+[22,22,22,22,22,22,22,22,22,22,22,22,22,22]]},
+// 铁匠铺 - 有铁砧、熔炉
+smithy:{n:'铁匠铺',w:14,h:12,ret:'village',rx:20,ry:56,
+t:[
+[28,28,28,28,28,28,28,28,28,28,28,28,28,28],
+[22,21,21,21,21,21,21,21,21,21,21,21,21,22],
+[22,21,21,27,27,21,21,21,27,27,21,21,21,22],
+[22,21,21,27,27,21,21,21,27,27,21,21,21,22],
+[22,21,21,21,21,21,21,21,21,21,21,21,21,22],
+[22,21,21,21,21,27,27,27,21,21,21,21,21,22],
+[22,21,21,21,21,21,21,21,21,21,21,21,21,22],
+[22,24,24,21,21,21,21,21,21,21,24,24,21,22],
+[22,24,24,21,21,21,21,21,21,21,24,24,21,22],
+[22,21,21,21,21,21,21,21,21,21,21,21,21,22],
+[22,21,21,21,21,21,23,21,21,21,21,21,21,22],
+[22,22,22,22,22,22,22,22,22,22,22,22,22,22]]}
+};
+
+const DOOR_MAP={'village_18_18':'player_home','village_75_20':'chief_home','village_50_32':'shop','village_75_62':'inn','village_20_62':'smithy'};
+
+// ============================================================
+// 输入系统
+// ============================================================
+class Input{
+constructor(){this.k={};this.kp={};this.lt=0;this.onKey=null;
+document.addEventListener('keydown',e=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','Escape','i','m','s'].includes(e.key))e.preventDefault();this.k[e.key]=true;if(!this.kp[e.key]){this.kp[e.key]=true;if(this.onKey)this.onKey(e.key)}});
+document.addEventListener('keyup',e=>{this.k[e.key]=false;this.kp[e.key]=false})}
+dir(){let n=Date.now();let d=this.k.Shift?CFG.RUN_DELAY:CFG.MOVE_DELAY;if(n-this.lt<d)return null;
+if(this.k.ArrowUp){this.lt=n;return'up'}if(this.k.ArrowDown){this.lt=n;return'down'}
+if(this.k.ArrowLeft){this.lt=n;return'left'}if(this.k.ArrowRight){this.lt=n;return'right'};return null}
+}
+
+// ============================================================
+// 像素精灵系统
+// ============================================================
+class SpriteSheet{
+constructor(){
+this.palette={
+'1':'#000000','2':'#ffffff','3':'#f4c7a0','4':'#2d2d2d','5':'#666666','6':'#999999',
+'7':'#3a7d44','8':'#5fa85f','9':'#1a4d1a','a':'#8b5e3c','b':'#d4a76a','c':'#5d3a1a',
+'d':'#4a90d9','e':'#3a78c0','f':'#a0d0ff','g':'#e74c3c','h':'#ff7070','i':'#d42020',
+'j':'#f39c12','k':'#ffd700','l':'#ff69b4','m':'#6b4a8e','n':'#2e1a47','o':'#708090',
+'p':'#505050','q':'#deb887','r':'#8b6914','s':'#ff8c00','t':'#ff4500','u':'#2c1810',
+'v':'#1e90ff','w':'#40e0d0','x':'#8b4513','y':'#6b8e23','z':'#f5f5dc',
+'0':'#00000000'
+};
+this.tiles={};
+this.chars={};
+this.mons={};
+this.boss={};
+this.init();
+}
+
+// 解码hex字符串为ImageData（1字符=1像素）
+decode(hex,w,h){
+let cv=document.createElement('canvas');cv.width=w;cv.height=h;
+let c=cv.getContext('2d');let img=c.createImageData(w,h);
+for(let i=0;i<hex.length;i++){
+let ch=hex[i];if(ch==='.'||ch===' '){img.data[i*4+3]=0;continue}
+let col=this.palette[ch];
+if(!col){img.data[i*4]=255;img.data[i*4+1]=0;img.data[i*4+2]=255;img.data[i*4+3]=255;continue}
+let r=parseInt(col.substr(1,2),16),g=parseInt(col.substr(3,2),16),b=parseInt(col.substr(5,2),16);
+img.data[i*4]=r;img.data[i*4+1]=g;img.data[i*4+2]=b;img.data[i*4+3]=255}
+c.putImageData(img,0,0);return cv
+}
+
+init(){
+// === Grass tile ===
+this.tiles.grass=this.makeFrames([
+'7777777777777777'+
+'7787777777877777'+
+'7777797777777977'+
+'7777778777777787'+
+'7777777777777777'+
+'8777777787777777'+
+'7777777777777977'+
+'7777877777778777'+
+'7777777777777777'+
+'7779777777797777'+
+'7787777787777777'+
+'7777777777777777'+
+'7777777877777777'+
+'7777777777777977'+
+'7777777777777777'+
+'7777777777777777']);
+
+// === Tree tile ===
+this.tiles.tree=this.makeFrames([
+'9999999999999999'+
+'9999799999799999'+
+'9997899997899999'+
+'9978879978879999'+
+'9978889988879999'+
+'9997889988799999'+
+'9999789987999999'+
+'999999aa99999999'+
+'999999aa99999999'+
+'99999aa999999999'+
+'99999aa999999999'+
+'99999aa999999999'+
+'99999acc99999999'+
+'9999acc999999999'+
+'9999999999999999'+
+'9999999999999999']);
+
+// === Water tile (2帧动画) ===
+this.tiles.water=this.makeFrames([
+'dddddddddddddddd'+
+'dddddddddddddddd'+
+'ddddfdddddddfdddd'+
+'dddddddddddddddd'+
+'dddddddddddddddd'+
+'dfdddddddddfddddd'+
+'dddddddddddddddd'+
+'dddddddddddddddd'+
+'dddddfddddddfdddd'+
+'dddddddddddddddd'+
+'dddddddddddddddd'+
+'dfdddddddddfddddd'+
+'dddddddddddddddd'+
+'dddddddddddddddd'+
+'dddddddddddddddd'+
+'dddddddddddddddd',
+'dddddddddddddddd'+
+'dddddddddddddddd'+
+'ddfddddddddfddddd'+
+'dddddddddddddddd'+
+'dddddddddddddddd'+
+'dddddfddddddfdddd'+
+'dddddddddddddddd'+
+'dddddddddddddddd'+
+'dfdddddddddfddddd'+
+'dddddddddddddddd'+
+'dddddddddddddddd'+
+'dddddfddddddfdddd'+
+'dddddddddddddddd'+
+'dddddddddddddddd'+
+'dddddddddddddddd'+
+'dddddddddddddddd']);
+
+// === Path tile ===
+this.tiles.path=this.makeFrames([
+'bbbbbbbbbbbbbbbb'+
+'bbbbbbbbbbbbbbbb'+
+'bbbbbabbbbbabbbbb'+
+'bbbbbbbbbbbbbbbb'+
+'bbbbbbbbbbbbbbbb'+
+'bbbbaabbbbaabbbbb'+
+'bbbbbbbbbbbbbbbb'+
+'bbbbbbbbbbbbbbbb'+
+'bbbbbbbbabbbbbbbb'+
+'bbbbbbbbbbbbbbbb'+
+'bbbbbbbbbbbbbbbb'+
+'bbbbaabbbbaabbbbb'+
+'bbbbbbbbbbbbbbbb'+
+'bbbbbbbbbbbbbbbb'+
+'bbbbbbbbbbbbbbbb'+
+'bbbbbbbbbbbbbbbb']);
+
+// === Tall grass (3帧动画) ===
+this.tiles.tall_grass=this.makeFrames([
+'7777777777777777'+
+'7777777777777777'+
+'7777777777777777'+
+'7787777787777777'+
+'7787777787777777'+
+'7787778787777777'+
+'7787778787777777'+
+'7787778787777777'+
+'7787778787777777'+
+'7787778787777777'+
+'7787778787777777'+
+'7787778787777777'+
+'7787778787777777'+
+'7787778787777777'+
+'7787778787777777'+
+'7787778787777777',
+'7777777777777777'+
+'7777777777777777'+
+'7777777777777777'+
+'8777787778777777'+
+'8777787778777777'+
+'8777787778777777'+
+'8777787778777777'+
+'8777787778777777'+
+'8777787778777777'+
+'8777787778777777'+
+'8777787778777777'+
+'8777787778777777'+
+'8777787778777777'+
+'8777787778777777'+
+'8777787778777777'+
+'8777787778777777',
+'7777777777777777'+
+'7777777777777777'+
+'7777777777777777'+
+'7778777877787777'+
+'7778777877787777'+
+'7778777877787777'+
+'7778777877787777'+
+'7778777877787777'+
+'7778777877787777'+
+'7778777877787777'+
+'7778777877787777'+
+'7778777877787777'+
+'7778777877787777'+
+'7778777877787777'+
+'7778777877787777'+
+'7778777877787777']);
+
+// === Mountain tile ===
+this.tiles.mountain=this.makeFrames([
+'6666666666666666'+
+'6666666626666666'+
+'6666666222666666'+
+'6666662222266666'+
+'6666652222256666'+
+'6666555222555666'+
+'6665555222555566'+
+'6655555222555556'+
+'6555555222555555'+
+'5555555555555555'+
+'5555555555555555'+
+'5555555555555555'+
+'5555555555555555'+
+'5555555555555555'+
+'5555555555555555'+
+'5555555555555555']);
+
+// === Lava tile (2帧) ===
+this.tiles.lava=this.makeFrames([
+'gggggggggggggggg'+
+'ggghgggggghgggggg'+
+'gggggggggggggggg'+
+'gggggghggggghgggg'+
+'gggggggggggggggg'+
+'ghggggggghggggggg'+
+'gggggggggggggggg'+
+'gggghggggggghgggg'+
+'gggggggggggggggg'+
+'gggggghgggghggggg'+
+'gggggggggggggggg'+
+'ghgggggghgggggggg'+
+'gggggggggggggggg'+
+'ggghggggggghggggg'+
+'gggggggggggggggg'+
+'gggggggggggggggg',
+'hhhhhhhhhhhhhhhh'+
+'hhhhhhhhhhhhhhhh'+
+'hhhhhhhhhhhhhhhh'+
+'hhhhhhhhhhhhhhhh'+
+'hhhhhhhhhhhhhhhh'+
+'hhhhhhhhhhhhhhhh'+
+'hhhhhhhhhhhhhhhh'+
+'hhhhhhhhhhhhhhhh'+
+'hhhhhhhhhhhhhhhh'+
+'hhhhhhhhhhhhhhhh'+
+'hhhhhhhhhhhhhhhh'+
+'hhhhhhhhhhhhhhhh'+
+'hhhhhhhhhhhhhhhh'+
+'hhhhhhhhhhhhhhhh'+
+'hhhhhhhhhhhhhhhh'+
+'hhhhhhhhhhhhhhhh']);
+
+// === Swamp tile ===
+this.tiles.swamp=this.makeFrames([
+'y9yyyyyyyyyyyyyy'+
+'yyyyyyyyyyyyyyyy'+
+'yyyyyy9yyyyyy9yyy'+
+'yyyyyyyyyyyyyyyy'+
+'yyyyyyyyyyyyyyyy'+
+'yy9yyyyyy9yyyyyyy'+
+'yyyyyyyyyyyyyyyy'+
+'yyyyyyyyyyyyyyyy'+
+'yyyyyy9yyyyyy9yyy'+
+'yyyyyyyyyyyyyyyy'+
+'yyyyyyyyyyyyyyyy'+
+'yy9yyyyyy9yyyyyyy'+
+'yyyyyyyyyyyyyyyy'+
+'yyyyyyyyyyyyyyyy'+
+'yyyyyyyyyyyyyyyy'+
+'yyyyyyyyyyyyyyyy']);
+
+// === 玩家精灵 ===
+this.chars['player_down_0']=this.decode('....1111...........111111.........11333311........13333331........13233231........13333331.........333333...........3333...........dddddd.........dddddddd........dd.dd.dd........d3.d3.d3.........dddddd..........dd..dd..........aa..aa..........aa..aa.......',16,16);
+this.chars['player_down_1']=this.decode('....1111...........111111.........11333311........13333331........13233231........13333331.........333333...........3333...........dddddd.........dddddddd.......dd..dddd..d.....d3..dd..d3........dddddd.........dd....dd........aa....aa........aa....aa......',16,16);
+this.chars['player_up_0']=this.decode('....1111...........111111.........11111111........11111111........11111111........11111111.........111111...........3333...........dddddd.........dddddddd........dd.dd.dd........dd.dd.dd.........dddddd..........dd..dd..........aa..aa..........aa..aa.......',16,16);
+this.chars['player_up_1']=this.decode('....1111...........111111.........11111111........11111111........11111111........11111111.........111111...........3333...........dddddd.........dddddddd.......dd..dddd..d.....dd..dd..dd........dddddd.........dd....dd........aa....aa........aa....aa......',16,16);
+this.chars['player_left_0']=this.decode('...1111...........111111..........11333311........13333331........13233331........13333331.........333333...........3333..........dddddd.........dddddddd........dd.ddddd........d3.dddd..........dddddd..........dd..dd..........aa..aa..........aa..aa........',16,16);
+this.chars['player_left_1']=this.decode('...1111...........111111..........11333311........13333331........13233331........13333331.........333333...........3333..........dddddd.........dddddddd.......ddddddddd.......d3dddddd..........dddddd.........dd....dd........aa....aa........aa....aa.......',16,16);
+this.chars['player_right_0']=this.decode('.........1111...........111111........11333311........13333331........13333231........13333331.........333333...........3333............dddddd.........dddddddd........ddddd.dd.........dddd.3d.........dddddd..........dd..dd..........aa..aa..........aa..aa..',16,16);
+this.chars['player_right_1']=this.decode('.........1111...........111111........11333311........13333331........13333231........13333331.........333333...........3333............dddddd.........dddddddd........ddddddddd........dddddd3d........dddddd.........dd....dd........aa....aa........aa....aa.',16,16);
+this.chars['npc_down_0']=this.decode('....cccc...........cccccc.........cc3333cc........c333333c........c323323c........c333333c.........333333...........3333...........gggggg.........gggggggg........gg.gg.gg........g3.g3.g3.........gggggg..........gg..gg..........aa..aa..........aa..aa.......',16,16);
+this.chars['npc_down_1']=this.decode('....cccc...........cccccc.........cc3333cc........c333333c........c323323c........c333333c.........333333...........3333...........gggggg.........gggggggg.......gg..gggg..g.....g3..gg..g3........gggggg.........gg....gg........aa....aa........aa....aa......',16,16);
+// === 怪物精灵 ===
+this.mons['slime_0']=this.decode('....................................888888.........88888888.......8888888888......8811881188.....888888888888....888888888888....8888888888888...8888888888888....888888888888....888888888888.....8888888888.......77777777....................................',16,16);
+this.mons['slime_1']=this.decode('....................................................888888.........88888888.......8811881188.....888888888888....888888888888....8888888888888...8888888888888....888888888888....888888888888.....8888888888.......77777777....................................',16,16);
+this.mons['wolf_0']=this.decode('.................55..........55.555.........555.5555.......5555.55115555551155...555555555555....555555555555.....5555555555......55511555.........5555555.........5555555........555555555.......555....555......55......55......44......44......44......44....',16,16);
+this.mons['wolf_1']=this.decode('.................55..........55.555.........555.5555.......5555.55115555551155...555555555555....555555555555.....5555555555......55511555.........5555555.........5555555........555555555......55........55....55........55....44........44....44........44...',16,16);
+this.mons['bat_0']=this.decode('.mm.........mm...mmm.......mmm...mmmm.....mmmm...mmmmm...mmmmm....mmmmm.mmmmm.....mm1mmmmm1mm......mmmmmmmmm........mmmmmmm..........mmmmm..........mmmmmmm........mmmmmmmmm......mmmmmmmmmmm.....mm.......mm....mm.........mm..................................',16,16);
+this.mons['bat_1']=this.decode('................................mm...........mm.mmm.........mmm.mmmm.......mmmm.mmmmm.....mmmmm..mm1mmmmm1mm......mmmmmmmmm........mmmmmmm..........mmmmm..........mmmmmmm........mmmmmmmmm......mmmmmmmmmmm.....mm.........mm..mm...........mm.................',16,16);
+this.mons['skeleton_0']=this.decode('....2222...........222222.........22222222........21222122........22222222........22211222.........222222...........2222...........222222.........22222222........22.22.22.........222222..........22..22..........22..22..........22..22..........55..55.......',16,16);
+this.mons['skeleton_1']=this.decode('....2222...........222222.........22222222........21222122........22222222........22211222.........222222...........2222...........222222.........22222222.......22..222..22.....22..22..22........222222.........22....22........55....55........55....55......',16,16);
+this.mons['butterfly_0']=this.decode('.................ll..........ll.llll........lllllllll......lllll.lllll....lllll...lllll..lllll.....llllllllll.......lll1llll.......llllllllll.....lllll..lllll...lllll....lllll.lllll......lllllllll........llll.ll..........ll.................................',16,16);
+this.mons['butterfly_1']=this.decode('................................ll............lllll..........lllllll........llll.llll......llll...llll....llll.....llllllllll.......lll1llll.......llllllllll.....llll....llll...llll......llll.llll........lllllll..........lllll............ll................',16,16);
+this.mons['boar_0']=this.decode('.................44..........44..444........444..44444444444444..44114444441144..44444444444444...44444244444.....44444444444.....44444444444.....444444444444....444444444444....444444444444.....44......44......44......44......aa......aa......aa......aa...',16,16);
+this.mons['boar_1']=this.decode('.................44..........44..444........444..44444444444444..44114444441144..44444444444444...44444244444.....44444444444.....44444444444.....444444444444....444444444444....444444444444....44........44....44........44....aa........aa....aa........aa..',16,16);
+this.mons['snake_0']=this.decode('...99.............9999............9199............9999.............9999.............9999.............9999.............9999.............9999.............9999.............9999.............9999.............999............9999..................................',16,16);
+this.mons['snake_1']=this.decode('....99.............9999............9199............9999.............9999.............9999.............9999.............9999.............9999.............9999.............9999.............9999.............999.............9999.................................',16,16);
+this.mons['treant_0']=this.decode('....9999...........999999.........99999999........99977999........99999999........99977999.........999999...........aaaa...........aaaaaa..........aaaaaa.........aa.aa.aa.......aa..aa..aa........aaaaaa..........aaaaaa..........aaaaaa.........aaaaaaaa......',16,16);
+this.mons['treant_1']=this.decode('....9999...........999999.........99999999........99977999........99999999........99977999.........999999...........aaaa...........aaaaaa.........aa.aaaa........aa..aaaa.......aa...aaaa..........aaaaaa..........aaaaaa..........aaaaaa.........aaaaaaaa......',16,16);
+this.mons['fire_salamander_0']=this.decode('..jj.............jjjjj...........j11jj...........jjjjjj...........jjjjjj...........jjjjjj...........jjjjjjj..........jjjjjjj..........jjjjjj...........jjjjj............jjjj.............jjj............jjjjj..........jjjjjjj..................................',16,16);
+this.mons['fire_salamander_1']=this.decode('...jj.............jjjjj...........j11jj...........jjjjjj...........jjjjjj...........jjjjjj...........jjjjjjj..........jjjjjjj..........jjjjjj...........jjjjj............jjjj.............jjj............jjjjj..........jjjjjjj.................................',16,16);
+this.mons['fire_bird_0']=this.decode('.....jj.............jjjj...........jjjjjj.........jj11jjjj........jjjjjjjj.........jjjjjj...........jjjj...........jjjjjj.........jjjjjjjjj......jjjjjjjjjjj....jjjjjjjjjjjjj....jjjjjjjjjjj......jjj.jjj.jj......jj...jj..jj....jj....jj...jj..................',16,16);
+this.mons['fire_bird_1']=this.decode('....jj.............jjjj...........jjjjjj.........jj11jjjj........jjjjjjjj.........jjjjjj...........jjjj...........jjjjjj.........jjjjjjjjj......jjjjjjjjjjj.....jjjjjjjjjjjj.....jjjjjjjjjjj......jjj.jjj.jj.....jj....jj...jj..jj.....jj....jj.................',16,16);
+this.mons['rock_golem_0']=this.decode('....pppp...........pppppp.........pppppppp........pp1pp1pp........pppppppp........pppppppp.........pppppp.........pppppppp.......pppppppppp......pppppppppp......pppppppppp......pppppppppp......ppp.pp.pp.......ppp.pp.pp.......ppp.pp.pp.......ppp.pp.pp......',16,16);
+this.mons['rock_golem_1']=this.decode('....pppp...........pppppp.........pppppppp........pp1pp1pp........pppppppp........pppppppp.........pppppp.........pppppppp.......pppppppppp......pppppppppp......pppppppppp......pppppppppp.......ppp..ppp........ppp..ppp........ppp..ppp........ppp..ppp......',16,16);
+// === Boss精灵 (32x32) ===
+this.decodeBoss=(hex)=>{let cv=document.createElement('canvas');cv.width=32;cv.height=32;let c=cv.getContext('2d');let img=c.createImageData(32,32);for(let i=0;i<hex.length;i++){let ch=hex[i];if(ch==='.'){img.data[i*4+3]=0;continue}let col=this.palette[ch];if(!col){img.data[i*4]=255;img.data[i*4+1]=0;img.data[i*4+2]=255;img.data[i*4+3]=255;continue}let r=parseInt(col.substr(1,2),16),g=parseInt(col.substr(3,2),16),b=parseInt(col.substr(5,2),16);img.data[i*4]=r;img.data[i*4+1]=g;img.data[i*4+2]=b;img.data[i*4+3]=255}c.putImageData(img,0,0);return cv}
+this.getChar=(name,frame)=>{let k=name+'_'+frame;return this.chars[k]||null}
+this.getMon=(name,frame)=>{let k=name+'_'+frame;return this.mons[k]||null}
+}
+
+makeFrames(arr){
+return arr.map(hex=>this.decode(hex,16,16))
+}
+
+getTile(type,animFrame){
+let frames;
+switch(type){
+case 0:frames=this.tiles.grass;break;case 1:frames=this.tiles.tree;break;
+case 2:frames=this.tiles.water;break;case 3:frames=this.tiles.path;break;
+case 6:frames=this.tiles.tall_grass;break;case 10:frames=this.tiles.mountain;break;
+case 11:frames=this.tiles.lava;break;case 12:frames=this.tiles.swamp;break;
+default:return null}
+if(!frames||!frames.length)return null;
+return frames[animFrame%frames.length]
+}
+}
+const sprites=new SpriteSheet();
+
+// ============================================================
+// 渲染引擎 - 口袋妖怪风格
+// ============================================================
+class Renderer{
+constructor(id){
+this.cv=document.getElementById(id);this.ctx=this.cv.getContext('2d');
+this.af=0;this.at=0;this.gt=480;this.ts=0.01;
+this.weather='clear';this.wt=0;this.rd=[];
+// 像素缓存
+this.tileCache={}
+}
+clear(){this.ctx.clearRect(0,0,this.cv.width,this.cv.height)}
+update(){
+this.at++;if(this.at>=8){this.af=(this.af+1)%120;this.at=0}
+this.gt=(this.gt+this.ts)%1440;
+this.wt--;
+if(this.wt<=0){let r=Math.random();this.weather=r<0.6?'clear':r<0.75?'rain':r<0.9?'snow':'fog';this.wt=18000+Math.random()*18000;
+if(this.weather==='rain'){this.rd=[];for(let i=0;i<60;i++)this.rd.push({x:Math.random()*1280,y:Math.random()*768,s:3+Math.random()*3})}}
+if(this.weather==='rain')for(let d of this.rd){d.y+=d.s;d.x-=0.5;if(d.y>768){d.y=0;d.x=Math.random()*1280}}
+}
+phase(){let h=Math.floor(this.gt/60);if(h>=6&&h<18)return'day';if(h>=18&&h<20)return'sunset';if(h>=20||h<4)return'night';return'dawn'}
+
+// 口袋妖怪风格瓦片绘制
+drawTile(x,y,t,cx,cy,mapW,mapH){
+let s=(x-cx)*CFG.TS,sy=(y-cy)*CFG.TS;
+if(s<-CFG.TS||s>this.cv.width||sy<-CFG.TS||sy>this.cv.height)return;
+let c=this.ctx,f=this.af;
+
+switch(t){
+case CFG.T.GRASS:
+// 像素精灵草地
+let grassSpr=sprites.getTile(0,this.af);
+if(grassSpr){c.drawImage(grassSpr,s,sy,64,64)}
+else{px(c,s,sy,64,64,'#6ab04c')}
+// 叠加草地随机纹理（让每格不同）
+for(let i=0;i<6;i++){
+let gx=s+((x*17+i*11+3)%56),gy=sy+((y*13+i*7+5)%56);
+c.fillStyle=['#5a9e3c','#7bc85c','#4a8e2c'][i%3];
+c.fillRect(gx,gy,3+(i%2),2+(i%2))}
+// 偶尔小花
+if((x*7+y*13)%17===0){px(c,s+28,sy+28,3,3,'#fff');px(c,s+29,sy+26,2,2,'#ffeb3b')}
+if((x*11+y*7)%23===0){px(c,s+16,sy+40,3,3,'#fff');px(c,s+17,sy+38,2,2,'#ff7043')}
+break;
+
+case CFG.T.TREE:
+let treeSpr=sprites.getTile(1,this.af);
+if(treeSpr){c.drawImage(treeSpr,s,sy,64,64)}
+else{px(c,s,sy,64,64,'#2d5a27')}
+// 地面阴影
+c.fillStyle='rgba(0,0,0,0.12)';
+c.beginPath();c.ellipse(s+32,sy+62,16,4,0,0,Math.PI*2);c.fill();
+break;
+
+case CFG.T.WATER:
+let waterSpr=sprites.getTile(2,this.af);
+if(waterSpr){c.drawImage(waterSpr,s,sy,64,64)}
+else{px(c,s,sy,64,64,'#4a90d9')}
+break;
+
+case CFG.T.PATH:
+let pathSpr=sprites.getTile(3,this.af);
+if(pathSpr){c.drawImage(pathSpr,s,sy,64,64)}
+else{px(c,s,sy,64,64,'#c8b898')}
+break;
+
+case CFG.T.WALL:
+// 墙壁 - 口袋妖怪风格房屋
+// 屋顶
+px(c,s,sy,64,16,'#c0392b');
+px(c,s+2,sy+2,60,12,'#e74c3c');
+// 瓦片纹理
+for(let i=0;i<6;i++){c.fillStyle='#a93226';c.fillRect(s+i*10+2,sy+4,8,4)}
+// 墙壁
+px(c,s,sy+16,64,48,'#f5e6d0');
+// 砖块纹理
+for(let i=0;i<3;i++){for(let j=0;j<4;j++){
+let bx=s+j*16+(i%2)*8,by=sy+18+i*12;
+c.fillStyle='#e8d5b8';c.fillRect(bx,by,14,10);
+c.strokeStyle='#d4c4a8';c.lineWidth=1;c.strokeRect(bx,by,14,10)}}
+// 窗户
+px(c,s+8,sy+24,16,12,'#87ceeb');
+px(c,s+40,sy+24,16,12,'#87ceeb');
+c.strokeStyle='#6d4c2a';c.lineWidth=2;
+c.strokeRect(s+8,sy+24,16,12);c.strokeRect(s+40,sy+24,16,12);
+// 窗户十字
+c.beginPath();c.moveTo(s+16,sy+24);c.lineTo(s+16,sy+36);c.moveTo(s+8,sy+30);c.lineTo(s+24,sy+30);c.stroke();
+c.beginPath();c.moveTo(s+48,sy+24);c.lineTo(s+48,sy+36);c.moveTo(s+40,sy+30);c.lineTo(s+56,sy+30);c.stroke();
+break;
+
+case CFG.T.DOOR:
+// 门 - 醒目设计
+px(c,s,sy,64,64,'#f5e6d0');
+// 门板（更大）
+px(c,s+14,sy+6,36,54,'#5d3a1a');
+px(c,s+16,sy+8,32,50,'#8b6914');
+// 门板纹理
+px(c,s+16,sy+8,32,4,'#a07828');
+px(c,s+16,sy+20,32,4,'#a07828');
+px(c,s+16,sy+36,32,4,'#a07828');
+// 门把手（大金色）
+px(c,s+40,sy+30,8,8,'#ffd700');
+px(c,s+42,sy+32,4,4,'#fff8dc');
+// 门框
+c.strokeStyle='#3d2010';c.lineWidth=3;
+c.strokeRect(s+14,sy+6,36,54);
+// 顶部"入口"标记
+c.fillStyle='#ffd700';c.font='bold 10px monospace';c.textAlign='center';
+c.fillText('入口',s+32,sy-2);
+// 闪烁箭头
+if(this.af%20<10){c.fillStyle='#ffd700';c.font='bold 16px monospace';c.fillText('▲',s+32,sy-10)}
+break;
+
+case CFG.T.TGRASS:
+let tgrassSpr=sprites.getTile(6,this.af);
+if(tgrassSpr){c.drawImage(tgrassSpr,s,sy,64,64)}
+else{px(c,s,sy,64,64,'#5cb85c')}
+break;
+
+case CFG.T.FLOWER:
+px(c,s,sy,64,64,'#5cb85c');
+let fc=['#ff69b4','#ff1493','#ffd700','#ff6347'][(x+y)%4];
+px(c,s+24,sy+24,16,16,fc);
+px(c,s+28,sy+28,8,8,'#fff');
+break;
+
+case CFG.T.MOUNTAIN:
+case CFG.T.MTN:
+let mtnSpr=sprites.getTile(10,this.af);
+if(mtnSpr){c.drawImage(mtnSpr,s,sy,64,64)}
+else{px(c,s,sy,64,64,'#7f8c8d')}
+break;
+
+case CFG.T.LAVA:
+let lavaSpr=sprites.getTile(11,this.af);
+if(lavaSpr){c.drawImage(lavaSpr,s,sy,64,64)}
+else{px(c,s,sy,64,64,'#e74c3c')}
+break;
+
+case CFG.T.SWAMP:
+let swampSpr=sprites.getTile(12,this.af);
+if(swampSpr){c.drawImage(swampSpr,s,sy,64,64)}
+else{px(c,s,sy,64,64,'#4a6b3a')}
+break;
+
+case CFG.T.CHEST:
+px(c,s,sy,64,64,'#5cb85c');
+px(c,s+16,sy+20,32,24,'#daa520');
+px(c,s+16,sy+20,32,8,'#b8860b');
+px(c,s+28,sy+32,8,8,'#ffd700');
+break;
+
+case CFG.T.TORCH:
+px(c,s,sy,64,64,'#5cb85c');
+px(c,s+28,sy+20,8,44,'#6d4c2a');
+let tf=f%4<2;
+c.fillStyle=tf?'#ff8c00':'#ffd700';
+c.beginPath();c.arc(s+32,sy+14,10,0,Math.PI*2);c.fill();
+c.fillStyle='rgba(255,200,0,0.15)';
+c.beginPath();c.arc(s+32,sy+14,20,0,Math.PI*2);c.fill();
+break;
+
+case CFG.T.SIGN:
+px(c,s,sy,64,64,'#5cb85c');
+px(c,s+28,sy+24,8,40,'#6d4c2a');
+px(c,s+12,sy+10,40,18,'#deb887');
+break;
+
+case CFG.T.ALTAR:
+px(c,s,sy,64,64,'#5cb85c');
+px(c,s+12,sy+20,40,24,'#9b59b6');
+c.fillStyle='#8e44ad';
+c.beginPath();c.arc(s+32,sy+14,12,0,Math.PI*2);c.fill();
+// 神秘光芒
+let ag=Math.sin(f*0.05)*0.2+0.2;
+c.fillStyle=`rgba(155,89,182,${ag})`;
+c.beginPath();c.arc(s+32,sy+14,20,0,Math.PI*2);c.fill();
+break;
+
+case CFG.T.FOUNTAIN:
+px(c,s,sy,64,64,'#5cb85c');
+// 水池
+c.fillStyle='#4a90d9';
+c.beginPath();c.arc(s+32,sy+32,22,0,Math.PI*2);c.fill();
+// 喷水
+let fo=Math.sin(f*0.08)*5;
+c.fillStyle='#87ceeb';c.fillRect(s+30,sy+10+fo,4,18);
+c.fillStyle='#5dade2';
+c.beginPath();c.arc(s+32,sy+8+fo,5,0,Math.PI*2);c.fill();
+// 池边
+c.strokeStyle='#7f8c8d';c.lineWidth=3;
+c.beginPath();c.arc(s+32,sy+32,22,0,Math.PI*2);c.stroke();
+break;
+
+case CFG.T.DEV_HOUSE:
+px(c,s,sy,64,64,'#1a0a2e');
+px(c,s+4,sy+4,56,56,'#2d1b4e');
+c.fillStyle='#e94560';c.font='bold 28px monospace';c.textAlign='center';
+c.fillText('?',s+32,sy+40);
+let dg=Math.sin(f*0.04)*0.2+0.2;
+c.fillStyle=`rgba(233,69,96,${dg})`;
+c.beginPath();c.arc(s+32,sy+32,26,0,Math.PI*2);c.fill();
+break;
+
+// 室内瓦片
+case CFG.T.FLOOR:
+px(c,s,sy,64,64,'#d4a574');
+for(let i=0;i<4;i++)for(let j=0;j<4;j++){
+c.fillStyle=(i+j)%2===0?'#c89860':'#e0b888';
+c.fillRect(s+i*16,sy+j*16,16,16)}
+break;
+
+case CFG.T.IWALL:
+case 22:
+px(c,s,sy,64,64,'#8b6914');
+px(c,s+2,sy+2,60,60,'#a07828');
+// 木纹
+for(let i=0;i<3;i++){c.fillStyle='#8b6914';c.fillRect(s+4,sy+4+i*20,56,2)}
+break;
+
+case CFG.T.EXIT:
+case 23:
+px(c,s,sy,64,64,'#d4a574');
+px(c,s+18,sy+8,28,56,'#6d4c2a');
+px(c,s+20,sy+10,24,52,'#8b6914');
+// 出口标记
+c.fillStyle='#2ecc71';c.font='bold 16px monospace';c.textAlign='center';
+c.fillText('出口',s+32,sy+50);
+break;
+
+case CFG.T.BOOK:
+case 24:
+px(c,s,sy,64,64,'#d4a574');
+// 书架
+px(c,s+8,sy+8,48,48,'#6d4c2a');
+for(let i=0;i<3;i++){px(c,s+12,sy+12+i*16,8,12,['#e74c3c','#3498db','#2ecc71'][i]);
+px(c,s+24,sy+12+i*16,8,12,['#f39c12','#9b59b6','#e91e63'][i]);
+px(c,s+36,sy+12+i*16,8,12,['#00bcd4','#ff9800','#8bc34a'][i])}
+break;
+
+case CFG.T.BED:
+case 25:
+px(c,s,sy,64,64,'#d4a574');
+// 床
+px(c,s+8,sy+12,48,40,'#c0392b');
+px(c,s+8,sy+12,48,8,'#e74c3c');
+// 枕头
+px(c,s+12,sy+16,16,8,'#fff');
+// 被子
+px(c,s+8,sy+28,48,24,'#a93226');
+break;
+
+case CFG.T.COUNTER:
+case 26:
+px(c,s,sy,64,64,'#d4a574');
+// 柜台
+px(c,s+4,sy+20,56,24,'#6d4c2a');
+px(c,s+4,sy+20,56,4,'#8b6914');
+break;
+
+case CFG.T.ANVIL:
+case 27:
+px(c,s,sy,64,64,'#d4a574');
+// 铁砧
+px(c,s+16,sy+28,32,16,'#555');
+px(c,s+20,sy+24,24,4,'#666');
+px(c,s+24,sy+40,16,12,'#444');
+break;
+
+case CFG.T.ROOF:
+case 28:
+px(c,s,sy,64,64,'#c0392b');
+px(c,s+2,sy+2,60,60,'#e74c3c');
+for(let i=0;i<6;i++){c.fillStyle='#a93226';c.fillRect(s+i*10+2,sy+4,8,56)}
+break;
+
+case CFG.T.GATE:
+case 29:
+// 大门 - 醒目出口
+// 地面
+px(c,s,sy,64,64,'#c8b898');
+// 石柱（左）
+px(c,s+2,sy+4,16,56,'#8b7355');
+px(c,s+4,sy+6,12,52,'#a08060');
+// 石柱（右）
+px(c,s+46,sy+4,16,56,'#8b7355');
+px(c,s+48,sy+6,12,52,'#a08060');
+// 横梁
+px(c,s+2,sy+2,60,8,'#6d5a3a');
+px(c,s+4,sy+4,56,4,'#8b7355');
+// 门洞（深色通道）
+px(c,s+18,sy+10,28,50,'#1a0a0a');
+// 地面阴影
+px(c,s+18,sy+52,28,8,'#3d2b1a');
+// 金色箭头（闪烁）
+if(this.af%20<12){c.fillStyle='#ffd700';c.font='bold 22px monospace';c.textAlign='center';c.fillText('▼',s+32,sy+36)}
+// 柱顶装饰
+px(c,s+4,sy+0,12,4,'#ffd700');px(c,s+48,sy+0,12,4,'#ffd700');
+// "出口"文字
+c.fillStyle='#ffd700';c.font='bold 11px monospace';c.textAlign='center';
+c.fillText('出口',s+32,sy-2);
+break;
+}
+}
+
+drawChar(x,y,dir,type,cx,cy,moving){
+let s=(x-cx)*CFG.TS,sy=(y-cy)*CFG.TS;
+if(s<-64||s>this.cv.width+64||sy<-64||sy>this.cv.height+64)return;
+let c=this.ctx,frame=moving?(this.af%20<10?1:0):0;
+let spriteName=(type==='player'?'player':'npc')+'_'+dir+'_'+frame;
+if(type!=='player')spriteName='npc_down_'+frame;
+let spr=sprites.getChar(type==='player'?'player_'+dir:'npc_down',frame);
+if(spr){
+// 阴影
+c.fillStyle='rgba(0,0,0,0.15)';c.beginPath();c.ellipse(s+32,sy+62,14,4,0,0,Math.PI*2);c.fill();
+c.drawImage(spr,s+8,sy+4,48,56);
+}else{
+// fallback原始绘制
+let b=moving?Math.sin(this.af*0.15)*2:0,w=moving?Math.sin(this.af*0.1)*3:0;
+if(type==='player'){
+c.fillStyle='rgba(0,0,0,0.2)';c.beginPath();c.ellipse(s+32,sy+60,13,4,0,0,Math.PI*2);c.fill();
+px(c,s+22,sy+52+w,8,6,'#5d4037');px(c,s+34,sy+52-w,8,6,'#5d4037');
+px(c,s+24,sy+42+w,7,12,'#1565c0');px(c,s+33,sy+42-w,7,12,'#1565c0');
+px(c,s+20,sy+26+b,24,18,'#1e88e5');
+px(c,s+22,sy+28+b,20,3,'#42a5f5');px(c,s+30,sy+28+b,4,14,'#0d47a1');
+if(dir==='left'){px(c,s+14,sy+28+b,6,14,'#1e88e5');px(c,s+14,sy+40+b,6,5,'#ffcc80')}
+else if(dir==='right'){px(c,s+44,sy+28+b,6,14,'#1e88e5');px(c,s+44,sy+40+b,6,5,'#ffcc80')}
+else{px(c,s+14,sy+28+b,6,14,'#1e88e5');px(c,s+44,sy+28+b,6,14,'#1e88e5');px(c,s+14,sy+40+b,6,5,'#ffcc80');px(c,s+44,sy+40+b,6,5,'#ffcc80')}
+px(c,s+22,sy+8+b,20,18,'#ffcc80');
+px(c,s+20,sy+6+b,24,8,'#6d4c2a');px(c,s+20,sy+6+b,4,14,'#6d4c2a');px(c,s+40,sy+6+b,4,14,'#6d4c2a');
+if(dir==='down'){px(c,s+26,sy+16+b,5,5,'#fff');px(c,s+33,sy+16+b,5,5,'#fff');px(c,s+27,sy+17+b,3,3,'#2196f3');px(c,s+34,sy+17+b,3,3,'#2196f3');px(c,s+28,sy+18+b,2,2,'#000');px(c,s+35,sy+18+b,2,2,'#000')}
+else if(dir==='up'){px(c,s+22,sy+8+b,20,12,'#6d4c2a')}
+else if(dir==='left'){px(c,s+23,sy+16+b,5,5,'#fff');px(c,s+23,sy+17+b,3,3,'#2196f3');px(c,s+23,sy+18+b,2,2,'#000')}
+else{px(c,s+36,sy+16+b,5,5,'#fff');px(c,s+38,sy+17+b,3,3,'#2196f3');px(c,s+39,sy+18+b,2,2,'#000')}
+if(dir==='down')px(c,s+30,sy+22+b,4,2,'#e57373');
+if(dir==='right'){px(c,s+50,sy+30+b,4,20,'#90a4ae');px(c,s+49,sy+28+b,6,4,'#ffd700')}
+else if(dir==='left'){px(c,s+10,sy+30+b,4,20,'#90a4ae');px(c,s+9,sy+28+b,6,4,'#ffd700')}
+}else{
+c.fillStyle='rgba(0,0,0,0.2)';c.beginPath();c.ellipse(s+32,sy+60,11,4,0,0,Math.PI*2);c.fill();
+px(c,s+24,sy+52+w,7,6,'#5d4037');px(c,s+33,sy+52-w,7,6,'#5d4037');
+px(c,s+25,sy+44+w,6,10,'#5d4037');px(c,s+33,sy+44-w,6,10,'#5d4037');
+px(c,s+21,sy+28+b,22,18,'#e53935');px(c,s+29,sy+28+b,6,6,'#fff');
+px(c,s+15,sy+30+b,6,12,'#e53935');px(c,s+43,sy+30+b,6,12,'#e53935');
+px(c,s+15,sy+40+b,6,5,'#ffcc80');px(c,s+43,sy+40+b,6,5,'#ffcc80');
+px(c,s+23,sy+10+b,18,18,'#ffcc80');
+px(c,s+21,sy+8+b,22,6,'#5d4037');px(c,s+21,sy+8+b,3,12,'#5d4037');px(c,s+40,sy+8+b,3,12,'#5d4037');
+if(dir==='down'){px(c,s+27,sy+18+b,4,4,'#fff');px(c,s+33,sy+18+b,4,4,'#fff');px(c,s+28,sy+19+b,2,2,'#333');px(c,s+34,sy+19+b,2,2,'#333')}
+else if(dir==='up'){px(c,s+23,sy+10+b,18,10,'#5d4037')}
+else if(dir==='left'){px(c,s+24,sy+18+b,4,4,'#fff');px(c,s+24,sy+19+b,2,2,'#333')}
+else{px(c,s+36,sy+18+b,4,4,'#fff');px(c,s+37,sy+19+b,2,2,'#333')}
+if(dir==='down')px(c,s+30,sy+24+b,4,2,'#e57373');
+}}
+}
+
+drawText(t,x,y,c='#fff',sz=14,al='left'){this.ctx.fillStyle=c;this.ctx.font=`${sz}px monospace`;this.ctx.textAlign=al;this.ctx.fillText(t,x,y)}
+
+dayNight(){
+let p=this.phase(),a=0;
+if(p==='sunset')a=0.15;else if(p==='night')a=0.35;else if(p==='dawn')a=0.1;
+if(a>0){this.ctx.fillStyle=`rgba(0,0,40,${a})`;this.ctx.fillRect(0,0,this.cv.width,this.cv.height)}
+}
+drawWeather(){
+let c=this.ctx;
+if(this.weather==='rain'){c.strokeStyle='rgba(150,180,255,0.3)';c.lineWidth=1;for(let d of this.rd){c.beginPath();c.moveTo(d.x,d.y);c.lineTo(d.x-2,d.y+8);c.stroke()}}
+else if(this.weather==='snow'){c.fillStyle='rgba(255,255,255,0.5)';for(let i=0;i<20;i++){let sx2=(this.af*1.5+i*43)%1280,sy2=(this.af+i*37)%768;c.beginPath();c.arc(sx2,sy2,2,0,Math.PI*2);c.fill()}}
+else if(this.weather==='fog'){c.fillStyle='rgba(200,200,200,0.2)';c.fillRect(0,0,this.cv.width,this.cv.height)}
+}
+}
+
+// ============================================================
+// 地图系统
+// ============================================================
+class MapMgr{
+constructor(){this.cur=null;this.cid=null;this.maps={};this.interior=null;this.chests={}}
+load(id){
+if(this.maps[id]){this.cur=this.maps[id];this.cid=id;return true}
+let d=MAPS[id];if(!d)return false;
+let tiles=[];for(let y=0;y<d.h;y++){tiles[y]=[];for(let x=0;x<d.w;x++)tiles[y][x]=this.gen(id,x,y)}
+this.maps[id]={...d,tiles,id};this.cur=this.maps[id];this.cid=id;return true
+}
+loadInterior(id){
+let d=INTERIORS[id];if(!d)return false;
+this.interior={...d,id};return true
+}
+exitInterior(){
+if(!this.interior)return;
+let r=this.interior.ret,rx=this.interior.rx,ry=this.interior.ry;
+this.interior=null;return{map:r,x:rx,y:ry}
+}
+getTile(x,y){
+if(this.interior){
+if(x<0||x>=this.interior.w||y<0||y>=this.interior.h)return CFG.T.IWALL;
+return this.interior.t[y][x]
+}
+if(!this.cur)return CFG.T.MTN;if(x<0||x>=this.cur.w||y<0||y>=this.cur.h)return CFG.T.MTN;
+return this.cur.tiles[y][x]
+}
+canPass(x,y){
+let t=this.getTile(x,y);
+if([CFG.T.TREE,CFG.T.WATER,CFG.T.WALL,CFG.T.MTN,CFG.T.LAVA,CFG.T.IWALL,CFG.T.BOOK,CFG.T.BED,CFG.T.COUNTER,CFG.T.ANVIL,CFG.T.ROOF].includes(t))return false;
+// NPC碰撞
+for(let nid of this.getNPCs()){let nd=NPCS[nid];if(nd&&nd.x===x&&nd.y===y)return false}
+// Boss碰撞（2x2范围）
+if(!this.interior&&this.cur&&this.cur.boss){
+let b=this.cur.boss;
+if(x>=b.x&&x<=b.x+1&&y>=b.y&&y<=b.y+1)return false}
+return true
+}
+isTallGrass(x,y){return this.getTile(x,y)===CFG.T.TGRASS}
+isDoor(x,y){return this.getTile(x,y)===CFG.T.DOOR}
+isExit(x,y){return this.getTile(x,y)===CFG.T.EXIT}
+isChest(x,y){return this.getTile(x,y)===CFG.T.CHEST}
+openChest(x,y){let k=`${this.cid}_${x}_${y}`;if(this.chests[k])return null;this.chests[k]=true;
+return Math.random()<0.4?{t:'g',v:50+Math.floor(Math.random()*100)}:Math.random()<0.7?{t:'i',id:'potion_s'}:{t:'i',id:'potion_m'}}
+checkTp(x,y){
+if(this.interior)return null;
+if(!this.cur||!this.cur.tp)return null;
+for(let tp of this.cur.tp)if(tp.x===x&&tp.y===y)return tp;return null
+}
+getNPCs(){
+if(this.interior){let d=INTERIORS[this.interior.id];return d?d.npcs||[]:[]}
+if(!this.cur)return[];return this.cur.npcs||[]
+}
+render(cx,cy){
+if(this.interior){
+let d=this.interior;let sx=Math.floor(cx),sy=Math.floor(cy);
+for(let y=sy;y<sy+CFG.VY+2;y++)for(let x=sx;x<sx+CFG.VX+2;x++){
+let t=x>=0&&x<d.w&&y>=0&&y<d.h?d.t[y][x]:CFG.T.IWALL;
+ren.drawTile(x,y,t,cx,cy,d.w,d.h)}
+return
+}
+if(!this.cur)return;
+let sx=Math.floor(cx),sy=Math.floor(cy);
+for(let y=sy;y<sy+CFG.VY+2;y++)for(let x=sx;x<sx+CFG.VX+2;x++){
+let t=this.getTile(x,y);ren.drawTile(x,y,t,cx,cy,this.cur.w,this.cur.h)}
+}
+gen(id,x,y){
+let d=MAPS[id],w=d.w,h=d.h;
+// 检查传送点位置（优先于边界）
+if(d.tp)for(let tp of d.tp)if(tp.x===x&&tp.y===y)return CFG.T.GATE;
+if(x===0||x===w-1||y===0||y===h-1){
+if(id==='village'||id==='grassland'||id==='forest'||id==='swamp')return CFG.T.TREE;return CFG.T.MTN}
+switch(id){
+case'village':return this.gVillage(x,y);
+case'grassland':return this.gGrass(x,y);
+case'forest':return this.gForest(x,y);
+case'volcano':return this.gVolcano(x,y);
+case'castle':return this.gCastle(x,y);
+case'swamp':return this.gSwamp(x,y);
+case'ruins':return this.gRuins(x,y);
+case'dragon':return this.gDragon(x,y);
+}return CFG.T.GRASS
+}
+gVillage(x,y){
+// 主角家 - 门在墙之前检查
+if(x===18&&y===18)return CFG.T.DOOR;
+if(x>=15&&x<=22&&y>=12&&y<=18)return CFG.T.WALL;
+// Boss房
+if(x>=24&&x<=31&&y>=12&&y<=18)return CFG.T.DEV_HOUSE;
+// 村长家
+if(x===75&&y===20)return CFG.T.DOOR;
+if(x>=70&&x<=80&&y>=12&&y<=20)return CFG.T.WALL;
+// 商人屋
+if(x===50&&y===32)return CFG.T.DOOR;
+if(x>=45&&x<=55&&y>=25&&y<=32)return CFG.T.WALL;
+// 旅馆
+if(x===75&&y===62)return CFG.T.DOOR;
+if(x>=70&&x<=80&&y>=55&&y<=62)return CFG.T.WALL;
+// 铁匠铺
+if(x===20&&y===62)return CFG.T.DOOR;
+if(x>=15&&x<=25&&y>=55&&y<=62)return CFG.T.WALL;
+// 喷泉
+if(x>=47&&x<=52&&y>=42&&y<=47)return CFG.T.FOUNTAIN;
+// 道路
+if((y===40&&x>=10&&x<=90)||(x===50&&y>=10&&y<=78)||(y===35&&x>=20&&x<=80))return CFG.T.PATH;
+if((x===15||x===85)&&(y===25||y===65))return CFG.T.FLOWER;
+if((x===10&&y===10)||(x===90&&y===10)||(x===10&&y===70)||(x===90&&y===70))return CFG.T.TORCH;
+if(x===49&&y===78)return CFG.T.GATE;
+if((x===47||x===51)&&y===77)return CFG.T.TORCH;
+if((x===45&&y===40)||(x===55&&y===40))return CFG.T.FLOWER;
+return CFG.T.GRASS
+}
+gGrass(x,y){
+if((y===40&&x>=0&&x<=100)||(x===50&&y>=0&&y<=80))return CFG.T.PATH;
+if(x>=20&&x<=80&&y>=20&&y<=60&&Math.random()<0.25)return CFG.T.TGRASS;
+if(Math.random()<0.04)return CFG.T.FLOWER;
+if(x===49&&y===0)return CFG.T.PATH;
+if(x===49&&y===1)return CFG.T.GATE;
+if((x===47||x===51)&&y===2)return CFG.T.TORCH;
+if(x>=95&&y>=75)return CFG.T.ALTAR;
+return CFG.T.GRASS
+}
+gForest(x,y){
+if((y===40&&x>=0&&x<=100)||(x===50&&y>=0&&y<=80))return CFG.T.PATH;
+if((x===1||x===98)&&y===40)return CFG.T.GATE;
+if((x===1||x===98)&&(y===38||y===42))return CFG.T.TORCH;
+if(Math.random()<0.3)return CFG.T.TREE;
+if(Math.random()<0.12)return CFG.T.TGRASS;
+return CFG.T.GRASS
+}
+gVolcano(x,y){
+if((y===40&&x>=0&&x<=100)||(x===50&&y>=0&&y<=80))return CFG.T.PATH;
+if((x===1||x===98)&&y===40)return CFG.T.GATE;
+if((x===1||x===98)&&(y===38||y===42))return CFG.T.TORCH;
+if(x>=30&&x<=70&&y>=10&&y<=30&&Math.random()<0.2)return CFG.T.LAVA;
+if(Math.random()<0.15)return CFG.T.MTN;
+if(x>=85&&y>=65)return CFG.T.ALTAR;
+return CFG.T.GRASS
+}
+gCastle(x,y){
+if((y===40&&x>=0&&x<=100)||(x===50&&y>=0&&y<=80))return CFG.T.PATH;
+if(x===1&&y===40)return CFG.T.GATE;
+if(x===1&&(y===38||y===42))return CFG.T.TORCH;
+if((x===20||x===80)&&y>=10&&y<=70)return CFG.T.WALL;
+if((x===20||x===80)&&(y===20||y===40||y===60))return CFG.T.TORCH;
+if(Math.random()<0.04)return CFG.T.TORCH;
+if(x>=85&&y<=10)return CFG.T.ALTAR;
+return CFG.T.FLOOR
+}
+gSwamp(x,y){
+if((y===40&&x>=0&&x<=100)||(x===50&&y>=0&&y<=80))return CFG.T.PATH;
+if(Math.random()<0.3)return CFG.T.SWAMP;
+return CFG.T.GRASS
+}
+gRuins(x,y){
+if((y===40&&x>=0&&x<=100)||(x===50&&y>=0&&y<=80))return CFG.T.PATH;
+if((x===30&&y===30)||(x===70&&y===50))return CFG.T.CHEST;
+if(Math.random()<0.06)return CFG.T.MTN;
+return CFG.T.FLOOR
+}
+gDragon(x,y){
+if((y===40&&x>=0&&x<=100)||(x===50&&y>=0&&y<=80))return CFG.T.PATH;
+if(Math.random()<0.12)return CFG.T.LAVA;
+if(Math.random()<0.15)return CFG.T.MTN;
+return CFG.T.GRASS
+}
+}
+
+// ============================================================
+// 玩家系统
+// ============================================================
+class Player{
+constructor(){
+this.x=49;this.y=40;this.dir='down';this.moving=false;
+this.name='勇者';this.lv=1;this.exp=0;this.gold=100;
+this.hp=100;this.mhp=100;this.mp=50;this.mmp=50;
+this.atk=10;this.def=5;this.spd=10;
+this.equip={weapon:null,armor:null,acc:null};
+this.skills=[{...SKILLS[0]},{...SKILLS[6]}];
+this.inv=[];this.mats=[];this.status=[];this.fav={};this.curMap='village';
+this.caught=[];this.achieves=[];this.kills={};
+this.inInterior=false;this.interiorId=null
+}
+move(dx,dy){
+let nx=this.x+dx,ny=this.y+dy;
+if(dx>0)this.dir='right';if(dx<0)this.dir='left';
+if(dy>0)this.dir='down';if(dy<0)this.dir='up';
+if(map.canPass(nx,ny)){this.x=nx;this.y=ny;this.moving=true;
+let tp=map.checkTp(nx,ny);if(tp)this.teleport(tp.t,tp.tx,tp.ty);
+return true}
+this.moving=false;return false
+}
+teleport(id,x,y){this.curMap=id;this.x=x;this.y=y;map.load(id);ui.msg(`到达了${MAPS[id].n}！`)}
+enterInterior(id){this.inInterior=true;this.interiorId=id;map.loadInterior(id);this.x=Math.floor(INTERIORS[id].w/2);this.y=INTERIORS[id].h-3}
+exitInterior(){let r=map.exitInterior();if(r){this.inInterior=false;this.interiorId=null;this.curMap=r.map;this.x=r.x;this.y=r.y;map.load(r.map)}}
+gainExp(n){this.exp+=n;while(this.exp>=this.nextExp()&&this.lv<50)this.lvUp()}
+nextExp(){return this.lv*50}
+lvUp(){this.lv++;this.mhp+=20;this.hp=this.mhp;this.mmp+=5;this.mp=this.mmp;this.atk+=3;this.def+=2;
+for(let s of SKILLS)if(s.lv===this.lv&&!this.skills.find(sk=>sk.id===s.id)){this.skills.push({...s});ui.msg(`学会了${s.name}！`)}
+ui.msg(`升级！Lv.${this.lv}`)}
+totalAtk(){let b=0;if(this.equip.weapon)b+=(this.equip.weapon.atk||0);
+if(this.equip.acc&&this.equip.acc.atkBonus)b+=Math.floor(this.atk*this.equip.acc.atkBonus);
+return Math.floor((this.atk+b)*(this.hasBuff('berserk')?1.5:1))}
+totalDef(){let b=0;if(this.equip.armor)b+=(this.equip.armor.def||0);
+if(this.equip.acc&&this.equip.acc.defBonus)b+=Math.floor(this.def*this.equip.acc.defBonus);
+return Math.floor((this.def+b)*(this.hasBuff('shield')?1.5:1))}
+hasBuff(t){return this.status.some(s=>s.type===t)}
+addInv(id,n=1){let d=ITEMS[id]||MATS[id];if(!d)return;
+let e=this.inv.find(i=>i.id===id);if(e)e.count+=n;else this.inv.push({id,name:d.name,type:d.type||'m',count:n})}
+addMat(id,n=1){let d=MATS[id];if(!d)return;
+let e=this.mats.find(i=>i.id===id);if(e)e.count+=n;else this.mats.push({id,name:d.name,count:n})}
+removeInv(id,n=1){let i=this.inv.findIndex(x=>x.id===id);if(i===-1)return false;
+this.inv[i].count-=n;if(this.inv[i].count<=0)this.inv.splice(i,1);return true}
+hasItem(id,n=1){let i=this.inv.find(x=>x.id===id);return i&&i.count>=n}
+equipItem(item){let sl=item.slot;if(this.equip[sl])this.unequip(sl);this.equip[sl]=item;this.removeInv(item.id,1);ui.msg(`装备了${item.name}！`)}
+unequip(sl){if(!this.equip[sl])return;let i=this.equip[sl];this.addInv(i.id,1);this.equip[sl]=null}
+rest(){this.hp=this.mhp;this.mp=this.mmp;ui.msg('休息完毕！HP/MP已恢复！')}
+render(cx,cy){ren.drawChar(this.x,this.y,this.dir,'player',cx,cy,this.moving)}
+}
+
+// ============================================================
+// 怪物类
+// ============================================================
+class Monster{
+constructor(id,data,isBoss=false){
+this.id=id;this.name=data.n;this.emoji=data.e;
+this.hp=data.hp;this.mhp=data.hp;this.atk=data.atk;this.def=data.def;
+this.exp=data.exp;this.gold=data.gold;this.el=data.el;
+this.weak=data.weak||null;this.drops=data.d||[];this.isBoss=isBoss;this.cr=data.cr||0;this.status=[];this.isFinal=data.isFinal||false
+}
+dmg(d){this.hp=Math.max(0,this.hp-d);return this.hp<=0}
+alive(){return this.hp>0}
+getDrops(){let r=[];for(let id of this.drops)if(Math.random()<0.5)r.push(id);return r}
+}
+
+// ============================================================
+// 战斗系统
+// ============================================================
+class Battle{
+constructor(){this.on=false;this.m=null;this.turn='p';this.log=[];this.sa=0;this.ss=0;this.si=0;this.st='action';
+// 动画系统
+this.animT=0;this.animType='';this.shakeX=0;this.shakeY=0;this.flashT=0;
+this.dispHpM=0;this.dispHpP=0;this.textTimer=0;this.fullText='';this.dispChars=0;
+this.phase='intro';this.phaseT=0;this.slideX=0;
+// 攻击动画系统
+this.atkAnim='none';this.atkAnimT=0;this.atkAnimDur=45;this.atkSavedX=0;this.atkSavedY=0}
+start(id,isBoss=false){
+let d=isBoss?BOSS[id]:MONS[id];if(!d)return;
+this.m=new Monster(id,d,isBoss);this.on=true;this.turn='p';this.log=[];this.st='action';this.sa=0;
+this.dispHpM=this.m.hp;this.dispHpP=player.hp;
+this.phase='intro';this.phaseT=0;this.slideX=400;
+this.fullText=isBoss?`${this.m.name}出现了！要战斗了！`:`野生的${this.m.name}出现了！`;
+this.dispChars=0;this.textTimer=0;
+if(isBoss&&this.m.weak)this.fullText+=` 弱点：${this.m.weak}`;
+}
+add(t){this.log.unshift(t);if(this.log.length>5)this.log.pop()}
+act(a){
+if(this.turn!=='p')return;
+if(a==='atk')this.pAtk();else if(a==='skill')this.st='skill';else if(a==='item')this.st='item';
+else if(a==='run')this.esc()
+}
+pAtk(){
+if(this.m.isFinal&&!player.mats.some(m=>m.id==='genesis_k')){this.add('普通攻击无效！需要创世之钥！');this.turn='m';setTimeout(()=>this.mTurn(),800);return}
+let d=this.calc(player.totalAtk(),this.m.def);
+if(this.m.isFinal)d=Math.max(1,Math.floor(d*0.3));
+let cr=Math.random()<CFG.CRIT;if(cr){d=Math.floor(d*CFG.CRIT_M)}
+// 触发冲刺动画
+this.atkAnim='rush';this.atkAnimT=0;this.atkDur=d;this.atkCrit=cr;
+this.turn='anim'
+}
+useSkill(i){
+if(i>=player.skills.length)return;let s=player.skills[i];
+if(player.mp<s.mp){this.add('MP不足！');return}
+player.mp-=s.mp;
+if(s.type==='phys'||s.type==='magic'){
+if(this.m.isFinal&&!player.mats.some(m=>m.id==='genesis_k')){this.add('技能无效！需要创世之钥！');this.turn='m';this.st='action';setTimeout(()=>this.mTurn(),800);return}
+let base=s.type==='phys'?player.totalAtk():Math.floor(player.totalAtk()*1.2);
+let d=this.calc(base,this.m.def);let em=this.getEm(s.elem,this.m.el);d=Math.floor(d*em);
+if(this.m.weak&&s.elem===this.m.weak){d*=2;this.add('效果拔群！')}
+if(s.crit&&Math.random()<s.crit){d=Math.floor(d*CFG.CRIT_M);this.add('暴击！')}
+if(s.hpCost){let loss=Math.floor(player.mhp*s.hpCost);player.hp=Math.max(1,player.hp-loss)}
+this.m.dmg(d);this.add(`${s.name}，${d}伤害！`);
+if(s.status)this.mStatus(s.status)
+}else if(s.type==='heal'){let a=Math.floor(player.mhp*s.pow);player.hp=Math.min(player.mhp,player.hp+a);this.add(`${s.name}，恢复${a}HP！`)}
+else if(s.type==='buff'){player.status.push({type:s.status,dur:3});this.add(`${s.name}！`)}
+if(!this.m.alive())this.win();else{this.turn='m';this.st='action';setTimeout(()=>this.mTurn(),800)}
+}
+useItem(id){
+let item=ITEMS[id];if(!item)return;
+if(item.eff==='heal'){player.hp=Math.min(player.mhp,player.hp+item.val);this.add(`${item.name}，恢复${item.val}HP！`)}
+else if(item.eff==='mp'){player.mp=Math.min(player.mmp,player.mp+item.val);this.add(`${item.name}，恢复${item.val}MP！`)}
+else if(item.eff==='cure'){player.status=player.status.filter(s=>s.type!==item.val);this.add(`${item.name}！`)}
+else if(item.eff==='escape'){this.add('逃跑成功！');this.end();return}
+else if(item.eff==='buff_atk'){player.status.push({type:'berserk',dur:item.dur});this.add('攻击力提升！')}
+else if(item.eff==='buff_def'){player.status.push({type:'shield',dur:item.dur});this.add('防御力提升！')}
+player.removeInv(id,1);this.turn='m';this.st='action';setTimeout(()=>this.mTurn(),800)
+}
+esc(){if(this.m.isBoss){this.add('无法逃跑！');return}
+if(Math.random()<CFG.ESC){this.add('逃跑成功！');this.end()}else{this.add('逃跑失败！');this.turn='m';setTimeout(()=>this.mTurn(),800)}}
+mTurn(){
+if(!this.m||!this.m.alive())return;
+if(this.m.status.some(s=>s.type==='freeze'||s.type==='stun')){this.add(`${this.m.name}无法行动！`);this.m.status=this.m.status.filter(s=>s.type!=='freeze'&&s.type!=='stun');this.turn='p';return}
+let d=this.calc(this.m.atk,player.totalDef());
+if(player.hasBuff('shield'))d=Math.floor(d*0.5);
+player.hp=Math.max(0,player.hp-d);this.add(`${this.m.name}攻击，${d}伤害！`);
+this.pStatus();if(player.hp<=0)this.lose();else{this.turn='p';this.st='action'}
+}
+calc(a,d){return Math.max(1,Math.floor(a*(1+Math.random()*0.1)-d*0.5))}
+getEm(a,d){if(!a||!d||a==='normal')return 1;let c=CFG.ELEM[a];if(!c)return 1;if(c.strong===d)return 1.5;if(c.weak===d)return 0.5;return 1}
+mStatus(t){let s={poison:{n:'中毒',dur:3},burn:{n:'灼烧',dur:3},freeze:{n:'冰冻',dur:1},stun:{n:'眩晕',dur:1}}[t];if(s){this.m.status.push({type:t,dur:s.dur});this.add(`${this.m.name}${s.n}！`)}}
+pStatus(){player.status=player.status.filter(e=>{
+if(e.type==='poison'){let d=Math.floor(player.mhp*0.05);player.hp=Math.max(0,player.hp-d);this.add(`中毒！${d}伤害`)}
+if(e.type==='burn'){let d=Math.floor(player.mhp*0.03);player.hp=Math.max(0,player.hp-d);this.add(`灼烧！${d}伤害`)}
+e.dur--;return e.dur>0})}
+win(){
+this.add(`击败${this.m.name}！${this.m.exp}EXP ${this.m.gold}Gold`);
+player.gainExp(this.m.exp);player.gold+=this.m.gold;
+for(let id of this.m.getDrops()){let d=ITEMS[id]||MATS[id];if(d){this.add(`${d.name}！`);if(ITEMS[id])player.addInv(id,1);else player.addMat(id,1)}}
+if(!player.kills[this.m.id])player.kills[this.m.id]=0;player.kills[this.m.id]++;
+// Boss击败后消失
+if(this.m.isBoss&&map.cur){map.cur.boss=null}
+if(this.m.isFinal){this.add('"恭喜你通关了！"');this.add('"但这个世界还会继续..."');player.achieves.push('clear')}
+setTimeout(()=>this.end(),1200)
+}
+lose(){this.add('被击败了...失去一半金币');player.gold=Math.floor(player.gold/2);player.hp=Math.floor(player.mhp*0.3);player.mp=Math.floor(player.mmp*0.3);
+player.curMap='village';player.x=49;player.y=40;player.inInterior=false;player.interiorId=null;map.interior=null;map.load('village');setTimeout(()=>this.end(),1500)}
+end(){this.on=false;this.m=null;this.log=[];this.st='action'}
+render(){
+if(!this.on||!this.m)return;let c=ren.ctx;
+// 更新动画
+this.textTimer++;if(this.textTimer%2===0&&this.dispChars<this.fullText.length)this.dispChars++;
+if(this.shakeX!==0)this.shakeX*=-0.7;if(Math.abs(this.shakeX)<0.5)this.shakeX=0;
+if(this.shakeY!==0)this.shakeY*=-0.7;if(Math.abs(this.shakeY)<0.5)this.shakeY=0;
+if(this.flashT>0)this.flashT--;
+if(this.slideX>0)this.slideX=Math.max(0,this.slideX-20);
+// 平滑HP
+this.dispHpM+=(this.m.hp-this.dispHpM)*0.15;if(Math.abs(this.dispHpM-this.m.hp)<1)this.dispHpM=this.m.hp;
+this.dispHpP+=(player.hp-this.dispHpP)*0.15;if(Math.abs(this.dispHpP-player.hp)<1)this.dispHpP=player.hp;
+
+// 攻击动画状态机
+if(this.atkAnim!=='none'){
+this.atkAnimT++;
+if(this.atkAnim==='rush'&&this.atkAnimT>=15){
+// 冲刺到位→命中
+this.atkAnim='hit';this.atkAnimT=0;
+this.flashT=15;this.shakeX=8;
+this.m.dmg(this.atkDur);
+if(this.atkCrit)this.add('暴击！');
+this.add(`攻击${this.m.name}，${this.atkDur}伤害！`);
+audio.hit()}
+else if(this.atkAnim==='hit'&&this.atkAnimT>=10){
+// 命中停留→退回
+this.atkAnim='return';this.atkAnimT=0}
+else if(this.atkAnim==='return'&&this.atkAnimT>=15){
+// 退回完成→结算
+this.atkAnim='none';this.atkAnimT=0;
+if(!this.m.alive())this.win();
+else{this.turn='m';setTimeout(()=>this.mTurn(),400)}}
+}
+
+let sx=this.shakeX,sy=this.shakeY;
+// === 战斗背景 ===
+// 天空渐变
+let grd=c.createLinearGradient(0,0,0,400);
+grd.addColorStop(0,'#87ceeb');grd.addColorStop(0.6,'#5ba4c8');grd.addColorStop(1,'#4a8aa8');
+c.fillStyle=grd;c.fillRect(sx,sy,1280,400);
+// 地面
+grd=c.createLinearGradient(0,400,0,768);
+grd.addColorStop(0,'#58a028');grd.addColorStop(0.3,'#4a8820');grd.addColorStop(1,'#306830');
+c.fillStyle=grd;c.fillRect(sx,400+sy,1280,368);
+// 地面纹理
+c.fillStyle='rgba(0,0,0,0.05)';
+for(let i=0;i<20;i++){c.fillRect(sx+i*64,420+sy,32,4);c.fillRect(sx+i*64+16,440+sy,32,4)}
+
+// === 怪物平台 ===
+c.fillStyle='#3d6b1a';c.beginPath();c.ellipse(sx+880,380+sy,120,18,0,0,Math.PI*2);c.fill();
+c.fillStyle='#4a7d22';c.beginPath();c.ellipse(sx+880,378+sy,115,14,0,0,Math.PI*2);c.fill();
+
+// === 怪物精灵 ===
+let monsterFlash=this.flashT>0&&this.flashT%4<2;
+let atkHit=this.atkAnim==='hit'&&this.atkAnimT<10;
+if(monsterFlash||atkHit){c.globalAlpha=0.6}
+// 查找怪物像素精灵
+let monFrame=this.af%20<10?0:1;
+let monSpr=sprites.getMon(this.m.id,monFrame);
+if(!monSpr&&this.m.isBoss){
+// Boss用bossSprites
+let bossSpr=sprites.boss[this.m.id+'_'+monFrame];
+if(bossSpr){let bs=this.m.isBoss?160:120;c.drawImage(bossSpr,sx+880-bs/2+this.slideX,340-bs/2+sy,bs,bs)}
+else{c.font='120px serif';c.textAlign='center';c.fillText(this.m.emoji,sx+880+this.slideX,340+sy)}
+}else if(monSpr){
+c.drawImage(monSpr,sx+880-60+this.slideX,340-60+sy,120,120)
+}else{
+c.font='120px serif';c.textAlign='center';c.fillText(this.m.emoji,sx+880+this.slideX,340+sy)
+}
+if(atkHit){c.fillStyle='rgba(255,0,0,0.3)';c.fillRect(sx+760,220+sy,240,200)}
+c.globalAlpha=1;
+
+// === 怪物信息面板（左上） ===
+let px=40+sx,py=30+sy;
+// 面板背景
+c.fillStyle='rgba(0,0,0,0.75)';this._roundRect(c,px,py,360,100,12);c.fill();
+c.strokeStyle='#f8f8f8';c.lineWidth=3;this._roundRect(c,px,py,360,100,12);c.stroke();
+// 名字和等级
+c.fillStyle='#fff';c.font='bold 22px monospace';c.textAlign='left';
+c.fillText(this.m.name,px+20,py+32);
+c.fillStyle='#f1c40f';c.font='16px monospace';c.fillText(`Lv.${this.m.isBoss?'??':Math.floor(this.m.atk/2)}`,px+260,py+32);
+// HP条背景
+c.fillStyle='#383838';c.fillRect(px+20,py+48,280,14);
+c.strokeStyle='#000';c.lineWidth=1;c.strokeRect(px+20,py+48,280,14);
+// HP条填充
+let hpR=this.dispHpM/this.m.mhp;
+let hpC=hpR>0.5?'#58d850':hpR>0.2?'#f8d030':'#f85020';
+c.fillStyle=hpC;c.fillRect(px+20,py+48,Math.floor(280*Math.max(0,hpR)),14);
+// HP标签
+c.fillStyle='#fff';c.font='11px monospace';c.fillText('HP',px+20,py+75);
+// 属性
+if(this.m.el!=='normal'){c.fillStyle=this._elemColor(this.m.el);c.font='13px monospace';
+c.fillText(this._elemName(this.m.el),px+280,py+75)}
+
+// === 玩家平台 ===
+c.fillStyle='#3d6b1a';c.beginPath();c.ellipse(sx+350,600+sy,100,15,0,0,Math.PI*2);c.fill();
+c.fillStyle='#4a7d22';c.beginPath();c.ellipse(sx+350,598+sy,95,12,0,0,Math.PI*2);c.fill();
+
+// === 玩家精灵（背影） ===
+let playerX=sx+310;
+if(this.atkAnim==='rush'){
+// 冲刺阶段：向怪物移动
+let progress=Math.min(1,this.atkAnimT/15);
+playerX=sx+310+progress*500;
+}else if(this.atkAnim==='hit'){
+// 命中后短暂停留
+playerX=sx+810;
+}else if(this.atkAnim==='return'){
+// 退回阶段
+let progress=Math.min(1,this.atkAnimT/15);
+playerX=sx+810-progress*500;
+}
+this._drawPlayerBack(playerX,480+sy);
+
+// === 玩家信息面板（右下） ===
+let ppx=580+sx,ppy=510+sy;
+c.fillStyle='rgba(0,0,0,0.75)';this._roundRect(c,ppx,ppy,420,120,12);c.fill();
+c.strokeStyle='#f8f8f8';c.lineWidth=3;this._roundRect(c,ppx,ppy,420,120,12);c.stroke();
+// 名字和等级
+c.fillStyle='#fff';c.font='bold 22px monospace';c.textAlign='left';
+c.fillText(player.name,ppx+20,ppy+32);
+c.fillStyle='#f1c40f';c.font='16px monospace';c.fillText(`Lv.${player.lv}`,ppx+300,ppy+32);
+// HP条
+c.fillStyle='#383838';c.fillRect(ppx+20,ppy+48,300,14);
+c.strokeStyle='#000';c.lineWidth=1;c.strokeRect(ppx+20,ppy+48,300,14);
+let ppR=this.dispHpP/player.mhp;
+let ppC=ppR>0.5?'#58d850':ppR>0.2?'#f8d030':'#f85020';
+c.fillStyle=ppC;c.fillRect(ppx+20,ppy+48,Math.floor(300*Math.max(0,ppR)),14);
+// HP数字
+c.fillStyle='#fff';c.font='13px monospace';c.fillText(`HP  ${Math.floor(this.dispHpP)}/${player.mhp}`,ppx+20,ppy+80);
+// MP条
+c.fillStyle='#383838';c.fillRect(ppx+20,ppy+90,200,10);
+c.fillStyle='#4a90d9';c.fillRect(ppx+20,ppy+90,Math.floor(200*(player.mp/player.mmp)),10);
+c.fillStyle='#aac';c.font='11px monospace';c.fillText(`MP ${player.mp}/${player.mmp}`,ppx+230,ppy+100);
+
+// === 底部文字/菜单区 ===
+// 文字框背景
+c.fillStyle='rgba(10,10,40,0.92)';this._roundRect(c,40,650,1200,100,10);c.fill();
+c.strokeStyle='#f8f8f8';c.lineWidth=2;this._roundRect(c,40,650,1200,100,10);c.stroke();
+
+if(this.st==='action'){
+// 显示文字
+c.fillStyle='#fff';c.font='16px monospace';c.textAlign='left';
+c.fillText(this.fullText.substring(0,this.dispChars),70,685);
+// 菜单
+let acts=[['⚔ 战斗','🎒 道具'],['🔮 技能','🏃 逃跑']];
+for(let r=0;r<2;r++)for(let col=0;col<2;col++){
+let ax=840+col*190,ay=658+r*38;
+let sel=r*2+col===this.sa;
+c.fillStyle=sel?'rgba(241,192,15,0.2)':'rgba(255,255,255,0.05)';
+this._roundRect(c,ax,ay,175,34,6);c.fill();
+if(sel){c.strokeStyle='#f1c40f';c.lineWidth=2;this._roundRect(c,ax,ay,175,34,6);c.stroke()}
+c.fillStyle=sel?'#f1c40f':'#fff';c.font=sel?'bold 17px monospace':'16px monospace';c.textAlign='center';
+c.fillText(acts[r][col],ax+87,ay+23)}
+}else if(this.st==='skill'){
+c.fillStyle='#fff';c.font='15px monospace';c.textAlign='left';
+c.fillText('选择技能（ESC返回）',70,680);
+for(let i=0;i<player.skills.length;i++){let s=player.skills[i];
+let sx2=70+(i%3)*380,sy2=700+Math.floor(i/3)*28;
+let sel=i===this.ss;
+c.fillStyle=sel?'#f1c40f':'#ccc';c.font=sel?'bold 14px monospace':'13px monospace';
+c.fillText(`${s.name} [${this._elemName(s.elem)}] MP:${s.mp}`,sx2,sy2)}
+}else if(this.st==='item'){
+let items=player.inv.filter(i=>i.type==='c');
+c.fillStyle='#fff';c.font='15px monospace';c.textAlign='left';
+c.fillText('选择道具（ESC返回）',70,680);
+for(let i=0;i<Math.min(items.length,6);i++){
+let sx2=70+(i%3)*380,sy2=700+Math.floor(i/3)*28;
+let sel=i===this.si;
+c.fillStyle=sel?'#f1c40f':'#ccc';c.font=sel?'bold 14px monospace':'13px monospace';
+c.fillText(`${items[i].name} x${items[i].count}`,sx2,sy2)}
+}
+}
+_roundRect(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.lineTo(x+w-r,y);c.quadraticCurveTo(x+w,y,x+w,y+r);c.lineTo(x+w,y+h-r);c.quadraticCurveTo(x+w,y+h,x+w-r,y+h);c.lineTo(x+r,y+h);c.quadraticCurveTo(x,y+h,x,y+h-r);c.lineTo(x,y+r);c.quadraticCurveTo(x,y,x+r,y);c.closePath()}
+_elemColor(el){return{fire:'#e74c3c',ice:'#87ceeb',thunder:'#f1c40f',water:'#3498db',light:'#ffd700',dark:'#9b59b6',poison:'#2ecc71',normal:'#aaa'}[el]||'#aaa'}
+_elemName(el){return{fire:'火',ice:'冰',thunder:'雷',water:'水',light:'光',dark:'暗',poison:'毒',normal:'普通'}[el]||el}
+_drawPlayerBack(x,y){
+let c=ren.ctx;
+// 身体
+px(c,x+10,y+20,40,30,'#1e88e5');
+px(c,x+12,y+22,36,4,'#42a5f5');
+// 头（背面）
+px(c,x+14,y+2,32,20,'#6d4c2a');
+px(c,x+18,y+4,24,16,'#8b6914');
+// 肩膀
+px(c,x+4,y+24,12,20,'#1e88e5');px(c,x+44,y+24,12,20,'#1e88e5');
+// 手臂
+px(c,x+4,y+40,12,10,'#ffcc80');px(c,x+44,y+40,12,10,'#ffcc80');
+// 腿
+px(c,x+16,y+50,10,16,'#1565c0');px(c,x+34,y+50,10,16,'#1565c0');
+// 靴子
+px(c,x+14,y+62,14,6,'#5d4037');px(c,x+32,y+62,14,6,'#5d4037');
+// 剑（背上）
+px(c,x+28,y-6,4,24,'#90a4ae');px(c,x+26,y-8,8,4,'#ffd700');
+}
+}
+
+// ============================================================
+// UI系统
+// ============================================================
+class UI{
+constructor(){this.msgs=[];this.dlg=null;this.menu=null;this.showInv=false;this.showMap=false;this.showEq=false}
+msg(t){this.msgs.push({t,timer:240});if(this.msgs.length>5)this.msgs.shift()}
+dlgShow(n,t){this.dlg={n,t}}
+dlgClose(){this.dlg=null}
+menuShow(){this.menu={sel:0,items:['背包','装备','存档','读档','返回']}}
+menuClose(){this.menu=null}
+update(){this.msgs=this.msgs.filter(m=>{m.timer--;return m.timer>0})}
+render(){
+// 消息
+let c=ren.ctx,y=8;
+for(let m of this.msgs){let a=Math.min(1,m.timer/40);c.globalAlpha=a;
+c.fillStyle='rgba(0,0,0,0.7)';c.fillRect(8,y,380,26);c.strokeStyle='#fff';c.lineWidth=1;c.strokeRect(8,y,380,26);
+c.fillStyle='#fff';c.font='12px monospace';c.textAlign='left';c.fillText(m.t,14,y+17);y+=30}
+c.globalAlpha=1;
+// 对话
+if(this.dlg){c.fillStyle='rgba(0,0,0,0.85)';c.fillRect(100,500,1080,170);c.strokeStyle='#f1c40f';c.lineWidth=3;c.strokeRect(100,500,1080,170);
+c.fillStyle='#f1c40f';c.font='18px monospace';c.textAlign='left';c.fillText(this.dlg.n,130,535);
+c.fillStyle='#fff';c.font='14px monospace';let w=this.dlg.t,line='',ly=560;
+for(let i=0;i<w.length;i++){let tl=line+w[i];if(c.measureText(tl).width>1000){c.fillText(line,130,ly);line=w[i];ly+=22}else line=tl}c.fillText(line,130,ly);
+c.fillStyle='#888';c.font='11px monospace';c.textAlign='center';c.fillText('按空格继续',640,660)}
+// 菜单
+if(this.menu){c.fillStyle='rgba(0,0,0,0.9)';c.fillRect(500,200,280,260);c.strokeStyle='#fff';c.lineWidth=2;c.strokeRect(500,200,280,260);
+c.fillStyle='#f1c40f';c.font='18px monospace';c.textAlign='center';c.fillText('菜单',640,232);
+c.font='15px monospace';for(let i=0;i<this.menu.items.length;i++){c.fillStyle=i===this.menu.sel?'#f1c40f':'#fff';c.fillText(this.menu.items[i],640,268+i*36)}}
+// 背包
+if(this.showInv){
+// 背景面板
+c.fillStyle='rgba(0,0,0,0.92)';c.fillRect(180,60,920,640);
+c.strokeStyle='#f1c40f';c.lineWidth=3;c.strokeRect(180,60,920,640);
+// 标题
+c.fillStyle='#f1c40f';c.font='bold 22px monospace';c.textAlign='center';c.fillText('🎒 背包',640,95);
+c.fillStyle='#ffd700';c.font='14px monospace';c.fillText(`💰 ${player.gold} 金币`,640,118);
+// 三栏布局
+let colW=280,colX=[200,490,780];
+// 消耗品栏
+c.fillStyle='rgba(241,196,15,0.15)';c.fillRect(colX[0],130,colW,480);
+c.fillStyle='#f1c40f';c.font='bold 14px monospace';c.textAlign='center';c.fillText('💊 消耗品',colX[0]+colW/2,150);
+c.font='12px monospace';c.textAlign='left';let iy=170;
+let cons=player.inv.filter(x=>x.type==='c');
+if(cons.length===0){c.fillStyle='#666';c.fillText('(空)',colX[0]+10,iy)}
+for(let i of cons){
+c.fillStyle='#fff';c.fillText(`${i.name}`,colX[0]+10,iy);
+c.fillStyle='#aaa';c.textAlign='right';c.fillText(`x${i.count}`,colX[0]+colW-10,iy);
+c.textAlign='left';iy+=20}
+// 装备栏
+c.fillStyle='rgba(52,152,219,0.15)';c.fillRect(colX[1],130,colW,480);
+c.fillStyle='#3498db';c.font='bold 14px monospace';c.textAlign='center';c.fillText('⚔️ 装备',colX[1]+colW/2,150);
+c.font='12px monospace';c.textAlign='left';iy=170;
+let equips=player.inv.filter(x=>x.type==='e');
+if(equips.length===0){c.fillStyle='#666';c.fillText('(空)',colX[1]+10,iy)}
+for(let i of equips){
+let slotIcon={weapon:'🗡️',armor:'🛡️',acc:'💍'}[i.slot]||'📦';
+c.fillStyle='#3498db';c.fillText(`${slotIcon} ${i.name}`,colX[1]+10,iy);iy+=20}
+// 材料栏
+c.fillStyle='rgba(46,204,113,0.15)';c.fillRect(colX[2],130,colW,480);
+c.fillStyle='#2ecc71';c.font='bold 14px monospace';c.textAlign='center';c.fillText('🧪 材料',colX[2]+colW/2,150);
+c.font='12px monospace';c.textAlign='left';iy=170;
+if(player.mats.length===0){c.fillStyle='#666';c.fillText('(空)',colX[2]+10,iy)}
+for(let i of player.mats){
+c.fillStyle='#2ecc71';c.fillText(`${i.name}`,colX[2]+10,iy);
+c.fillStyle='#aaa';c.textAlign='right';c.fillText(`x${i.count}`,colX[2]+colW-10,iy);
+c.textAlign='left';iy+=20}
+c.fillStyle='#888';c.font='13px monospace';c.textAlign='center';c.fillText('ESC关闭',640,685)}
+// 装备
+if(this.showEq){
+c.fillStyle='rgba(0,0,0,0.92)';c.fillRect(300,100,680,520);
+c.strokeStyle='#3498db';c.lineWidth=3;c.strokeRect(300,100,680,520);
+c.fillStyle='#3498db';c.font='bold 22px monospace';c.textAlign='center';c.fillText('⚔️ 装备',640,135);
+// 当前装备
+c.fillStyle='rgba(52,152,219,0.15)';c.fillRect(320,155,300,160);
+c.fillStyle='#3498db';c.font='bold 14px monospace';c.textAlign='center';c.fillText('当前装备',470,175);
+c.font='13px monospace';c.textAlign='left';let ey=200;
+for(let[sl,sn,icon]of[['weapon','武器','🗡️'],['armor','防具','🛡️'],['acc','饰品','💍']]){
+c.fillStyle='#f1c40f';c.fillText(`${icon} ${sn}:`,340,ey);
+c.fillStyle=player.equip[sl]?'#fff':'#666';
+c.fillText(player.equip[sl]?player.equip[sl].name:'(无)',430,ey);ey+=35}
+// 属性加成
+ey+=10;c.fillStyle='#2ecc71';c.font='12px monospace';
+c.fillText(`总ATK: ${player.totalAtk()}`,340,ey);ey+=18;
+c.fillText(`总DEF: ${player.totalDef()}`,340,ey);ey+=18;
+c.fillText(`HP: ${player.hp}/${player.mhp}  MP: ${player.mp}/${player.mmp}`,340,ey);
+// 可装备列表
+c.fillStyle='rgba(46,204,113,0.15)';c.fillRect(640,155,320,380);
+c.fillStyle='#2ecc71';c.font='bold 14px monospace';c.textAlign='center';c.fillText('可装备',800,175);
+c.font='12px monospace';c.textAlign='left';ey=200;
+let eqList=player.inv.filter(x=>x.type==='e');
+if(eqList.length===0){c.fillStyle='#666';c.fillText('(无可装备物品)',660,ey)}
+for(let i of eqList){
+let slotIcon={weapon:'🗡️',armor:'🛡️',acc:'💍'}[i.slot]||'📦';
+c.fillStyle='#2ecc71';c.fillText(`${slotIcon} ${i.name}`,660,ey);
+c.fillStyle='#aaa';c.fillText(`[${i.slot}]`,870,ey);ey+=22}
+c.fillStyle='#888';c.font='13px monospace';c.textAlign='center';c.fillText('ESC关闭',640,605)}
+// 地图
+if(this.showMap){c.fillStyle='rgba(0,0,0,0.9)';c.fillRect(340,100,600,500);c.strokeStyle='#fff';c.lineWidth=2;c.strokeRect(340,100,600,500);
+c.fillStyle='#f1c40f';c.font='18px monospace';c.textAlign='center';
+let mn=player.inInterior?(INTERIORS[player.interiorId]?.n||'室内'):(MAPS[player.curMap]?.n||'地图');
+c.fillText(mn,640,132);
+if(!player.inInterior&&map.cur){let sc=5,ox=380,oy=150;
+for(let y=0;y<map.cur.h;y+=2)for(let x=0;x<map.cur.w;x+=2){let t=map.getTile(x,y),cl;
+switch(t){case 0:case 6:cl='#4a7c59';break;case 1:cl='#2d5a27';break;case 2:cl='#3498db';break;case 3:cl='#95a5a6';break;case 4:cl='#8b4513';break;case 11:cl='#ff4500';break;case 10:cl='#696969';break;case 12:cl='#556b2f';break;default:cl='#4a7c59'}
+c.fillStyle=cl;c.fillRect(ox+x*sc,oy+y*sc,sc*2,sc*2)}
+for(let nid of map.getNPCs()){let nd=NPCS[nid];if(nd){c.fillStyle='#f1c40f';c.beginPath();c.arc(ox+nd.x*sc,oy+nd.y*sc,3,0,Math.PI*2);c.fill()}}
+if(map.cur.boss){let b=map.cur.boss;c.fillStyle='#e74c3c';c.beginPath();c.arc(ox+b.x*sc,oy+b.y*sc,4,0,Math.PI*2);c.fill()}
+c.fillStyle='#e74c3c';c.beginPath();c.arc(ox+player.x*sc,oy+player.y*sc,5,0,Math.PI*2);c.fill()}
+c.fillStyle='#fff';c.font='12px monospace';c.fillText(`天气:${ren.weather==='clear'?'晴天':ren.weather==='rain'?'雨天':ren.weather==='snow'?'雪天':'雾天'}`,640,570);
+let ph=ren.phase();c.fillText(`时间:${ph==='day'?'白天':ph==='sunset'?'黄昏':ph==='night'?'夜晚':'黎明'}`,640,590);
+c.fillStyle='#888';c.fillText('M关闭',640,615)}
+}
+updateBar(){
+document.getElementById('hp').textContent=player.hp;document.getElementById('max-hp').textContent=player.mhp;
+document.getElementById('mp').textContent=player.mp;document.getElementById('max-mp').textContent=player.mmp;
+document.getElementById('atk').textContent=player.totalAtk();document.getElementById('def').textContent=player.totalDef();
+document.getElementById('gold').textContent=player.gold;document.getElementById('level').textContent=player.lv;
+document.getElementById('exp').textContent=player.exp;document.getElementById('next-exp').textContent=player.nextExp()
+}
+}
+
+// ============================================================
+// 存档系统
+// ============================================================
+class Save{
+key='pxrpg_v3'
+save(){
+let d={p:{x:player.x,y:player.y,dir:player.dir,name:player.name,lv:player.lv,exp:player.exp,gold:player.gold,
+hp:player.hp,mhp:player.mhp,mp:player.mp,mmp:player.mmp,atk:player.atk,def:player.def,
+curMap:player.curMap,inv:player.inv,mats:player.mats,equip:player.equip,skills:player.skills,
+fav:player.fav,caught:player.caught,achieves:player.achieves,kills:player.kills,
+inInterior:player.inInterior,interiorId:player.interiorId},
+chests:map.chests,ts:Date.now()};
+try{localStorage.setItem(this.key,JSON.stringify(d));ui.msg('已保存！');return true}catch(e){ui.msg('保存失败！');return false}
+}
+load(){
+try{let r=localStorage.getItem(this.key);if(!r){ui.msg('没有存档！');return false}
+let d=JSON.parse(r),p=d.p;
+player.x=p.x;player.y=p.y;player.dir=p.dir;player.name=p.name;player.lv=p.lv;player.exp=p.exp;player.gold=p.gold;
+player.hp=p.hp;player.mhp=p.mhp;player.mp=p.mp||50;player.mmp=p.mmp||50;player.atk=p.atk;player.def=p.def;
+player.curMap=p.curMap;player.inv=p.inv||[];player.mats=p.mats||[];player.equip=p.equip;player.skills=p.skills;
+player.fav=p.fav||{};player.caught=p.caught||[];player.achieves=p.achieves||[];player.kills=p.kills||{};
+player.inInterior=p.inInterior||false;player.interiorId=p.interiorId||null;
+map.chests=d.chests||{};
+if(player.inInterior&&player.interiorId){map.loadInterior(player.interiorId)}else{map.load(player.curMap)}
+ui.msg('已读取！');return true}catch(e){ui.msg('读取失败！');return false}
+}
+has(){return localStorage.getItem(this.key)!==null}
+}
+
+// ============================================================
+// 音频系统
+// ============================================================
+class Audio{
+constructor(){this.ctx=null;this.on=true;try{this.ctx=new(window.AudioContext||window.webkitAudioContext)()}catch(e){this.on=false}}
+play(f,d,t='sine',v=0.1){if(!this.on||!this.ctx)return;try{let o=this.ctx.createOscillator(),g=this.ctx.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(this.ctx.destination);o.start();g.gain.exponentialRampToValueAtTime(0.001,this.ctx.currentTime+d);o.stop(this.ctx.currentTime+d)}catch(e){}}
+step(){this.play(200+Math.random()*80,0.04,'square',0.02)}
+atk(){this.play(150,0.1,'sawtooth',0.12)}
+hit(){this.play(80,0.12,'square',0.1)}
+lv(){this.play(523,0.12,'sine',0.12);setTimeout(()=>this.play(659,0.12,'sine',0.12),120);setTimeout(()=>this.play(784,0.2,'sine',0.12),240)}
+item(){this.play(880,0.08,'sine',0.08);setTimeout(()=>this.play(1100,0.12,'sine',0.08),80)}
+boss(){this.play(100,0.25,'sawtooth',0.15);setTimeout(()=>this.play(80,0.25,'sawtooth',0.15),150)}
+talk(){this.play(400+Math.random()*150,0.025,'square',0.03)}
+heal(){this.play(440,0.08,'sine',0.08);setTimeout(()=>this.play(550,0.12,'sine',0.08),80)}
+}
+
+// ============================================================
+// 游戏主循环
+// ============================================================
+const input=new Input();
+const ren=new Renderer('gameCanvas');
+const map=new MapMgr();
+const player=new Player();
+const battle=new Battle();
+const ui=new UI();
+const save=new Save();
+const audio=new Audio();
+
+let state='playing';let encCd=0;let camX=0,camY=0;let stepCnt=0;let doorCd=0;
+
+function init(){
+map.load('village');
+if(save.has())save.load();
+input.onKey=k=>handleKey(k);
+loop()
+}
+
+function loop(){update();render();requestAnimationFrame(loop)}
+
+function update(){
+ren.update();ui.update();ui.updateBar();
+if(encCd>0)encCd--;
+if(doorCd>0)doorCd--;
+if(state==='playing')updatePlay();
+updateCam()
+}
+
+function updatePlay(){
+let d=input.dir();
+if(d&&!ui.dlg&&!ui.menu&&!ui.showInv&&!ui.showEq&&!ui.showMap){
+let dx=0,dy=0;
+if(d==='up')dy=-1;if(d==='down')dy=1;if(d==='left')dx=-1;if(d==='right')dx=1;
+let moved=player.move(dx,dy);
+if(moved){stepCnt++;if(stepCnt%3===0)audio.step();
+checkEnc();checkDoor();checkChest();
+if(player.mp<player.mmp&&Math.random()<0.01)player.mp++;
+if(Math.random()<0.003)randEvent()}}
+if(Math.random()<0.00003){let m=['远处传来奇怪的声音...','地面微微震动...','你听到键盘敲击声...等等？','一阵风吹过...'];ui.msg(m[Math.floor(Math.random()*m.length)])}
+}
+
+function updateCam(){
+if(player.inInterior&&map.interior){
+let tx=player.x-CFG.VX/2,ty=player.y-CFG.VY/2;
+camX+=(tx-camX)*0.15;camY+=(ty-camY)*0.15;
+camX=Math.max(0,Math.min(camX,map.interior.w-CFG.VX));
+camY=Math.max(0,Math.min(camY,map.interior.h-CFG.VY));return
+}
+let tx=player.x-CFG.VX/2,ty=player.y-CFG.VY/2;
+camX+=(tx-camX)*0.1;camY+=(ty-camY)*0.1;
+camX=Math.max(0,Math.min(camX,CFG.MW-CFG.VX));camY=Math.max(0,Math.min(camY,CFG.MH-CFG.VY))
+}
+
+function checkEnc(){
+if(encCd>0||player.inInterior)return;
+// Boss碰撞检测（相邻格子自动触发）
+if(map.cur&&map.cur.boss){
+let b=map.cur.boss,dist=Math.abs(player.x-b.x)+Math.abs(player.y-b.y);
+if(dist<=1){battle.start(b.id,true);state='battle';encCd=120;audio.boss();return}}
+// 只在高草丛遇敌
+if(!map.isTallGrass(player.x,player.y))return;
+if(Math.random()<0.08){let ma=MAPS[player.curMap]?.ma;if(!ma||!ma.length)return;
+let m=ma[0].m;let mid=m[Math.floor(Math.random()*m.length)];
+battle.start(mid,false);state='battle';encCd=120;audio.atk()}
+}
+
+function checkDoor(){
+if(doorCd>0)return;
+if(player.inInterior){
+if(map.isExit(player.x,player.y)){player.exitInterior();audio.item();doorCd=30}
+return
+}
+if(map.isDoor(player.x,player.y)){
+let key=`${player.curMap}_${player.x}_${player.y}`;
+let interiorId=DOOR_MAP[key];
+if(interiorId){player.enterInterior(interiorId);audio.item();doorCd=30}
+}
+}
+
+function checkChest(){
+if(map.isChest(player.x,player.y)){
+let r=map.openChest(player.x,player.y);
+if(r){if(r.t==='g'){player.gold+=r.v;ui.msg(`宝箱！${r.v}金币！`)}else{player.addInv(r.id,1);ui.msg(`宝箱！${ITEMS[r.id].name}！`)}audio.item()}}
+let tp=map.checkTp(player.x,player.y);if(tp)player.teleport(tp.t,tp.tx,tp.ty)
+}
+
+function randEvent(){
+let r=Math.random();
+if(r<0.2){let g=Math.floor(Math.random()*40)+10;player.gold+=g;ui.msg(`捡到宝箱！${g}金币！`);audio.item()}
+else if(r<0.35){ui.msg('踩到陷阱！-10HP！');player.hp=Math.max(1,player.hp-10);audio.hit()}
+else if(r<0.5){ui.msg('发现四叶草！HP+15！');player.hp=Math.min(player.mhp,player.hp+15);audio.heal()}
+else if(r<0.7){ui.msg('天气变了！');ren.wt=0}
+else{let m=['地上有行字："debug_mode=on"','NPC在自言自语："我是谁？"','你踩到按钮，什么都没发生','你突然想吃泡面','远处有传送门...走近看是光影'];ui.msg(m[Math.floor(Math.random()*m.length)])}
+}
+
+function handleKey(k){
+if(state==='battle'){battleKey(k);return}
+if(ui.dlg){if(k===' '||k==='Escape')ui.dlgClose();return}
+if(ui.menu){menuKey(k);return}
+if(ui.showInv){if(k==='Escape'||k==='i')ui.showInv=false;return}
+if(ui.showEq){if(k==='Escape')ui.showEq=false;return}
+if(ui.showMap){if(k==='Escape'||k==='m')ui.showMap=false;return}
+switch(k){
+case' ':interact();break;
+case'Escape':ui.menuShow();break;
+case'i':ui.showInv=true;audio.item();break;
+case'm':ui.showMap=true;break;
+case's':save.save();break
+}
+}
+
+function menuKey(k){
+switch(k){
+case'ArrowUp':ui.menu.sel=(ui.menu.sel-1+ui.menu.items.length)%ui.menu.items.length;break;
+case'ArrowDown':ui.menu.sel=(ui.menu.sel+1)%ui.menu.items.length;break;
+case' ':
+let s=ui.menu.items[ui.menu.sel];
+if(s==='背包'){ui.menuClose();ui.showInv=true}else if(s==='装备'){ui.menuClose();ui.showEq=true}
+else if(s==='存档'){save.save();ui.menuClose()}else if(s==='读档'){save.load();ui.menuClose()}else ui.menuClose();break;
+case'Escape':ui.menuClose();break
+}
+}
+
+function battleKey(k){
+if(!battle.on){state='playing';return}
+if(battle.turn==='anim')return; // 动画期间不接受输入
+if(battle.st==='action'){
+switch(k){
+case'ArrowLeft':battle.sa=(battle.sa-1+4)%4;break;
+case'ArrowRight':battle.sa=(battle.sa+1)%4;break;
+case' ':let a=['atk','skill','item','run'];battle.act(a[battle.sa]);audio.atk();break}
+}else if(battle.st==='skill'){
+switch(k){
+case'ArrowLeft':battle.ss=(battle.ss-1+player.skills.length)%player.skills.length;break;
+case'ArrowRight':battle.ss=(battle.ss+1)%player.skills.length;break;
+case' ':battle.useSkill(battle.ss);audio.atk();break;
+case'Escape':battle.st='action';break}
+}else if(battle.st==='item'){
+let items=player.inv.filter(i=>i.type==='c');
+switch(k){
+case'ArrowLeft':battle.si=(battle.si-1+Math.max(1,items.length))%Math.max(1,items.length);break;
+case'ArrowRight':battle.si=(battle.si+1)%Math.max(1,items.length);break;
+case' ':if(items.length>0)battle.useItem(items[battle.si].id);break;
+case'Escape':battle.st='action';break}
+}
+if(!battle.on){state='playing';audio.lv()}
+}
+
+function interact(){
+let cx=player.x,cy=player.y;
+if(player.dir==='up')cy--;if(player.dir==='down')cy++;if(player.dir==='left')cx--;if(player.dir==='right')cx++;
+// NPC
+for(let nid of map.getNPCs()){
+let nd=NPCS[nid];if(!nd)continue;
+if(nd.x===cx&&nd.y===cy){
+if(!player.fav[nid])player.fav[nid]=0;player.fav[nid]++;
+let dlgs=nd.d;if(player.fav[nid]>=5&&nd.fd)dlgs=nd.fd;
+ui.dlgShow(nd.n,dlgs[Math.floor(Math.random()*dlgs.length)]);audio.talk();
+nd.dir=player.x>nd.x?'right':player.x<nd.x?'left':player.y>nd.y?'down':'up';
+if(player.fav[nid]===5){
+if(nid==='chief'){player.addInv('potion_m',3);ui.msg('村长给了3瓶中药水！')}
+if(nid==='merchant'){player.addInv('atk_pot',2);ui.msg('商人给了2瓶攻击药水！')}
+if(nid==='blacksmith'){player.addInv('i_sword',1);ui.msg('铁匠送了铁剑！')}
+if(nid==='wander_merchant'){player.addInv('ball',1);ui.msg('流浪商人送了精灵球！')}
+if(nid==='hunter'){player.addInv('escape',3);ui.msg('猎人给了3张逃跑卷轴！')}
+}return}}
+// Boss
+if(!player.inInterior&&map.cur&&map.cur.boss){
+let b=map.cur.boss;if(b.x===cx&&b.y===cy){battle.start(b.id,true);state='battle';audio.boss();return}}
+// 旅馆休息
+if(player.curMap==='village'&&!player.inInterior&&cx>=70&&cx<=80&&cy>=55&&cy<=62){player.rest();audio.heal();return}
+// 喷泉
+if(map.getTile(cx,cy)===CFG.T.FOUNTAIN){player.hp=Math.min(player.mhp,player.hp+30);player.mp=Math.min(player.mmp,player.mp+15);ui.dlgShow('喷泉','清澈的泉水...HP/MP小幅恢复！');audio.heal();return}
+// Boss房
+if(map.getTile(cx,cy)===CFG.T.DEV_HOUSE){
+let bd=['boar_t','wolf_kp','dragon_sc','demon_h','swamp_h','ancient_c','ldragon_s'];
+let has=bd.every(d=>player.mats.some(m=>m.id===d));
+if(has){if(!player.mats.some(m=>m.id==='genesis_k')){player.addMat('genesis_k',1);ui.msg('获得创世之钥！')}
+ui.dlgShow('???','"你终于来了...这个世界都是我创造的。"');setTimeout(()=>{battle.start('dev',true);state='battle';audio.boss()},2000)}
+else{let miss=bd.filter(d=>!player.mats.some(m=>m.id===d));ui.dlgShow('游戏工作室',`门被封印了...还缺${miss.length}个Boss掉落物。`)}
+return}
+// 路牌
+if(map.getTile(cx,cy)===CFG.T.SIGN){ui.dlgShow('路牌','小心草丛里的怪物！按I打开背包。');return}
+// 隐藏入口（优先于祭坛检查）
+if(player.curMap==='grassland'&&cx>=95&&cy>=75){player.teleport('swamp',50,70);ui.msg('隐藏入口！到达迷雾沼泽！');return}
+if(player.curMap==='volcano'&&cx>=85&&cy>=65){player.teleport('ruins',5,40);ui.msg('矿洞密道！到达远古遗迹！');return}
+if(player.curMap==='castle'&&cx>=85&&cy<=10){player.teleport('dragon',5,40);ui.msg('王座密道！到达龙之巢穴！');return}
+// 祭坛
+if(map.getTile(cx,cy)===CFG.T.ALTAR){player.hp=Math.min(player.mhp,player.hp+80);player.mp=Math.min(player.mmp,player.mp+40);ui.dlgShow('神秘祭坛','远古力量...HP/MP大幅恢复！');audio.heal();return}
+}
+
+function drawMiniMap(){
+let c=ren.ctx,mw=140,mh=100,mx=8,my=8;
+c.fillStyle='rgba(0,0,0,0.6)';c.fillRect(mx,my,mw,mh);
+c.strokeStyle='#aaa';c.lineWidth=1;c.strokeRect(mx,my,mw,mh);
+if(!map.cur&&!map.interior)return;
+let mapW=map.interior?map.interior.w:(map.cur?map.cur.w:100);
+let mapH=map.interior?map.interior.h:(map.cur?map.cur.h:80);
+let sc=Math.min(mw/mapW,mh/mapH);
+let ox=mx+(mw-mapW*sc)/2,oy=my+(mh-mapH*sc)/2;
+for(let y=0;y<mapH;y+=3)for(let x=0;x<mapW;x+=3){
+let t=map.getTile(x,y),cl;
+switch(t){case 0:case 6:case 7:cl='#4a7c59';break;case 1:cl='#2d5a27';break;
+case 2:cl='#3498db';break;case 3:case 8:cl='#95a5a6';break;case 4:case 5:cl='#8b4513';break;
+case 11:cl='#ff4500';break;case 10:cl='#696969';break;case 12:cl='#556b2f';break;
+case 21:cl='#d4a574';break;case 22:cl='#8b6914';break;default:cl='#4a7c59'}
+c.fillStyle=cl;c.fillRect(ox+x*sc,oy+y*sc,Math.max(2,sc*3),Math.max(2,sc*3))}
+for(let nid of map.getNPCs()){let nd=NPCS[nid];if(nd){c.fillStyle='#f1c40f';
+c.fillRect(ox+nd.x*sc-1,oy+nd.y*sc-1,3,3)}}
+if(!map.interior&&map.cur&&map.cur.boss){let b=map.cur.boss;c.fillStyle='#e74c3c';
+c.fillRect(ox+b.x*sc-2,oy+b.y*sc-2,4,4)}
+c.fillStyle=ren.af%20<10?'#fff':'#ff0';
+c.fillRect(ox+player.x*sc-2,oy+player.y*sc-2,4,4);
+c.fillStyle='#fff';c.font='10px monospace';c.textAlign='center';
+let mn=player.inInterior?(INTERIORS[player.interiorId]?.n||'室内'):(MAPS[player.curMap]?.n||'');
+c.fillText(mn,mx+mw/2,my+mh+12)}
+
+function render(){
+ren.clear();
+if(state==='battle'){battle.render();return}
+map.render(camX,camY);
+// NPC
+for(let nid of map.getNPCs()){let nd=NPCS[nid];if(!nd)continue;
+ren.drawChar(nd.x,nd.y,nd.dir||'down','npc',camX,camY,false);
+let sx=(nd.x-camX)*CFG.TS,sy=(nd.y-camY)*CFG.TS;
+if(sx>-64&&sx<1344&&sy>-64&&sy<832){
+ren.ctx.fillStyle='#fff';ren.ctx.font='10px monospace';ren.ctx.textAlign='center';ren.ctx.fillText(nd.n,sx+32,sy-4);
+let fv=player.fav[nid]||0;if(fv>0){ren.ctx.fillStyle='#ff69b4';ren.ctx.font='8px monospace';ren.ctx.fillText('♥'.repeat(Math.min(fv,5)),sx+32,sy-14)}}}
+// Boss - 像素精灵
+if(!player.inInterior&&map.cur&&map.cur.boss){
+let b=map.cur.boss,bo=BOSS[b.id];
+if(bo){let sx=(b.x-camX)*CFG.TS,sy=(b.y-camY)*CFG.TS;
+if(sx>-64&&sx<1344&&sy>-64&&sy<832){
+let bossFrame=ren.af%20<10?0:1;
+let bossSpr=sprites.boss[b.id+'_'+bossFrame];
+if(bossSpr){
+ren.ctx.drawImage(bossSpr,sx-32,sy-32,128,128)
+}else{
+ren.ctx.font='36px serif';ren.ctx.textAlign='center';ren.ctx.fillText(bo.e,sx+32,sy+42)
+}
+ren.ctx.fillStyle='#ff0';ren.ctx.font='11px monospace';ren.ctx.textAlign='center';ren.ctx.fillText(bo.n,sx+64,sy-4);
+if(bo.weak){ren.ctx.fillStyle='#f1c40f';ren.ctx.font='9px monospace';ren.ctx.fillText(`弱点:${bo.weak}`,sx+64,sy-14)}}}}
+player.render(camX,camY);
+ren.dayNight();ren.drawWeather();
+// 小地图 - 左上角常驻
+drawMiniMap();
+ui.render()
+}
+
+init();
+</script>
+</body>
+</html>
