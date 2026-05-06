@@ -422,7 +422,7 @@
                 for (let x = 0; x < MAP_WIDTH; x++) {
                     let tile = map[y][x];
                     let color;
-                    
+
                     switch(tile) {
                         case 0: color = '#4a7c59'; break;
                         case 1: color = '#2d5a27'; break;
@@ -432,25 +432,68 @@
                         case 5: color = '#6b8e23'; break;
                         case 6: color = '#ff69b4'; break;
                     }
-                    
+
+                    // 绘制基础颜色
                     ctx.fillStyle = color;
                     ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                    
-                    ctx.strokeStyle = 'rgba(0,0,0,0.1)';
-                    ctx.strokeRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                    
+
+                    // 添加Coromon风格的纹理细节
+                    if (tile === 0 || tile === 5) {
+                        // 草地纹理 - 添加渐变效果
+                        ctx.fillStyle = '#528461';
+                        ctx.fillRect(x * TILE_SIZE + 4, y * TILE_SIZE + 4, 2, 2);
+                        ctx.fillRect(x * TILE_SIZE + 12, y * TILE_SIZE + 12, 2, 2);
+                        ctx.fillRect(x * TILE_SIZE + 20, y * TILE_SIZE + 8, 2, 2);
+                        ctx.fillRect(x * TILE_SIZE + 8, y * TILE_SIZE + 20, 2, 2);
+                    }
+
                     if (tile === 1) {
+                        // 树木 - 更详细的绘制
+                        // 树干
+                        ctx.fillStyle = '#5D4037';
+                        ctx.fillRect(x * TILE_SIZE + 12, y * TILE_SIZE + 20, 8, 12);
+                        // 树冠阴影
                         ctx.fillStyle = '#1a4d1a';
                         ctx.beginPath();
-                        ctx.arc(x * TILE_SIZE + 16, y * TILE_SIZE + 16, 12, 0, Math.PI * 2);
+                        ctx.arc(x * TILE_SIZE + 16, y * TILE_SIZE + 14, 12, 0, Math.PI * 2);
+                        ctx.fill();
+                        // 树冠高光
+                        ctx.fillStyle = '#2d5a27';
+                        ctx.beginPath();
+                        ctx.arc(x * TILE_SIZE + 14, y * TILE_SIZE + 12, 8, 0, Math.PI * 2);
+                        ctx.fill();
+                        // 树冠细节
+                        ctx.fillStyle = '#3a7d44';
+                        ctx.beginPath();
+                        ctx.arc(x * TILE_SIZE + 18, y * TILE_SIZE + 10, 4, 0, Math.PI * 2);
                         ctx.fill();
                     }
+
+                    if (tile === 4) {
+                        // 建筑 - 添加砖块纹理
+                        ctx.strokeStyle = '#6d3a1a';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(x * TILE_SIZE + 2, y * TILE_SIZE + 2, 14, 7);
+                        ctx.strokeRect(x * TILE_SIZE + 16, y * TILE_SIZE + 2, 14, 7);
+                        ctx.strokeRect(x * TILE_SIZE + 2, y * TILE_SIZE + 9, 10, 7);
+                        ctx.strokeRect(x * TILE_SIZE + 12, y * TILE_SIZE + 9, 18, 7);
+                    }
+
                     if (tile === 6) {
+                        // 花朵 - 更精美的绘制
                         ctx.fillStyle = '#ff1493';
                         ctx.beginPath();
                         ctx.arc(x * TILE_SIZE + 16, y * TILE_SIZE + 16, 6, 0, Math.PI * 2);
                         ctx.fill();
+                        ctx.fillStyle = '#ffd700';
+                        ctx.beginPath();
+                        ctx.arc(x * TILE_SIZE + 16, y * TILE_SIZE + 16, 3, 0, Math.PI * 2);
+                        ctx.fill();
                     }
+
+                    // 移除网格线，让画面更自然
+                    // ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+                    // ctx.strokeRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                 }
             }
         }
@@ -458,38 +501,133 @@
         function drawPlayer() {
             let x = player.x * TILE_SIZE;
             let y = player.y * TILE_SIZE;
-            
+
+            // Coromon风格角色绘制
+
+            // 阴影
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath();
+            ctx.ellipse(x + 16, y + 28, 10, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+
             // 身体
             ctx.fillStyle = '#3498db';
-            ctx.fillRect(x + 8, y + 8, 16, 16);
-            
+            ctx.fillRect(x + 8, y + 12, 16, 14);
+
+            // 身体高光
+            ctx.fillStyle = '#5dade2';
+            ctx.fillRect(x + 10, y + 14, 4, 10);
+
             // 头
             ctx.fillStyle = '#f39c12';
             ctx.beginPath();
-            ctx.arc(x + 16, y + 8, 8, 0, Math.PI * 2);
+            ctx.arc(x + 16, y + 10, 8, 0, Math.PI * 2);
             ctx.fill();
-            
-            // 方向指示
+
+            // 头高光
+            ctx.fillStyle = '#f1c40f';
+            ctx.beginPath();
+            ctx.arc(x + 14, y + 8, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 眼睛
+            ctx.fillStyle = '#2c3e50';
+            if (player.direction === 'down') {
+                ctx.fillRect(x + 13, y + 10, 2, 2);
+                ctx.fillRect(x + 17, y + 10, 2, 2);
+            } else if (player.direction === 'up') {
+                ctx.fillRect(x + 13, y + 8, 2, 2);
+                ctx.fillRect(x + 17, y + 8, 2, 2);
+            } else if (player.direction === 'left') {
+                ctx.fillRect(x + 12, y + 9, 2, 2);
+                ctx.fillRect(x + 16, y + 9, 2, 2);
+            } else if (player.direction === 'right') {
+                ctx.fillRect(x + 14, y + 9, 2, 2);
+                ctx.fillRect(x + 18, y + 9, 2, 2);
+            }
+
+            // 方向指示箭头
             ctx.fillStyle = '#e74c3c';
-            if (player.direction === 'up') ctx.fillRect(x + 14, y + 2, 4, 4);
-            if (player.direction === 'down') ctx.fillRect(x + 14, y + 26, 4, 4);
-            if (player.direction === 'left') ctx.fillRect(x + 2, y + 14, 4, 4);
-            if (player.direction === 'right') ctx.fillRect(x + 26, y + 14, 4, 4);
+            if (player.direction === 'up') {
+                ctx.beginPath();
+                ctx.moveTo(x + 16, y + 2);
+                ctx.lineTo(x + 12, y + 6);
+                ctx.lineTo(x + 20, y + 6);
+                ctx.fill();
+            }
+            if (player.direction === 'down') {
+                ctx.beginPath();
+                ctx.moveTo(x + 16, y + 30);
+                ctx.lineTo(x + 12, y + 26);
+                ctx.lineTo(x + 20, y + 26);
+                ctx.fill();
+            }
+            if (player.direction === 'left') {
+                ctx.beginPath();
+                ctx.moveTo(x + 2, y + 16);
+                ctx.lineTo(x + 6, y + 12);
+                ctx.lineTo(x + 6, y + 20);
+                ctx.fill();
+            }
+            if (player.direction === 'right') {
+                ctx.beginPath();
+                ctx.moveTo(x + 30, y + 16);
+                ctx.lineTo(x + 26, y + 12);
+                ctx.lineTo(x + 26, y + 20);
+                ctx.fill();
+            }
         }
         
         function drawNPCs() {
             for (let npc of npcs) {
                 let x = npc.x * TILE_SIZE;
                 let y = npc.y * TILE_SIZE;
-                
+
+                // Coromon风格NPC绘制
+
+                // 阴影
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.beginPath();
+                ctx.ellipse(x + 16, y + 28, 10, 4, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 身体
                 ctx.fillStyle = '#e74c3c';
-                ctx.fillRect(x + 8, y + 8, 16, 16);
-                
+                ctx.fillRect(x + 8, y + 12, 16, 14);
+
+                // 身体高光
+                ctx.fillStyle = '#ec7063';
+                ctx.fillRect(x + 10, y + 14, 4, 10);
+
+                // 头
                 ctx.fillStyle = '#f1c40f';
                 ctx.beginPath();
-                ctx.arc(x + 16, y + 8, 8, 0, Math.PI * 2);
+                ctx.arc(x + 16, y + 10, 8, 0, Math.PI * 2);
                 ctx.fill();
-                
+
+                // 头高光
+                ctx.fillStyle = '#f4d03f';
+                ctx.beginPath();
+                ctx.arc(x + 14, y + 8, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 眼睛
+                ctx.fillStyle = '#2c3e50';
+                if (npc.direction === 'down') {
+                    ctx.fillRect(x + 13, y + 10, 2, 2);
+                    ctx.fillRect(x + 17, y + 10, 2, 2);
+                } else if (npc.direction === 'up') {
+                    ctx.fillRect(x + 13, y + 8, 2, 2);
+                    ctx.fillRect(x + 17, y + 8, 2, 2);
+                } else if (npc.direction === 'left') {
+                    ctx.fillRect(x + 12, y + 9, 2, 2);
+                    ctx.fillRect(x + 16, y + 9, 2, 2);
+                } else if (npc.direction === 'right') {
+                    ctx.fillRect(x + 14, y + 9, 2, 2);
+                    ctx.fillRect(x + 18, y + 9, 2, 2);
+                }
+
+                // NPC名字
                 ctx.fillStyle = '#fff';
                 ctx.font = '10px Arial';
                 ctx.textAlign = 'center';
@@ -498,59 +636,170 @@
         }
         
         function drawDialogue() {
-            ctx.fillStyle = 'rgba(0,0,0,0.8)';
-            ctx.fillRect(50, 350, 540, 100);
-            
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(50, 350, 540, 100);
-            
+            // Coromon风格对话框
+
+            // 对话框背景
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+            ctx.fillRect(40, 340, 560, 120);
+
+            // 边框
+            ctx.strokeStyle = '#f1c40f';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(40, 340, 560, 120);
+
+            // 内边框
+            ctx.strokeStyle = '#b8860b';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(45, 345, 550, 110);
+
+            // 名字标签
             ctx.fillStyle = '#f1c40f';
-            ctx.font = '16px Arial';
+            ctx.font = 'bold 16px Arial';
             ctx.textAlign = 'left';
-            ctx.fillText(currentDialogue.name, 70, 375);
-            
+            ctx.fillText(currentDialogue.name, 60, 370);
+
+            // 对话文本
             ctx.fillStyle = '#fff';
             ctx.font = '14px Arial';
-            ctx.fillText(currentDialogue.text, 70, 400);
-            
+            ctx.fillText(currentDialogue.text, 60, 395);
+
+            // 提示文本
             ctx.fillStyle = '#888';
             ctx.font = '12px Arial';
-            ctx.fillText('按空格键继续', 70, 430);
+            ctx.fillText('按空格键继续', 60, 430);
+
+            // 闪烁的继续指示器
+            if (Math.floor(Date.now() / 500) % 2 === 0) {
+                ctx.fillStyle = '#f1c40f';
+                ctx.beginPath();
+                ctx.moveTo(540, 425);
+                ctx.lineTo(545, 430);
+                ctx.lineTo(550, 425);
+                ctx.fill();
+            }
         }
         
         function drawBattle() {
-            ctx.fillStyle = '#1a1a2e';
+            // Coromon风格战斗界面
+
+            // 背景渐变
+            let gradient = ctx.createLinearGradient(0, 0, 0, 480);
+            gradient.addColorStop(0, '#1a1a2e');
+            gradient.addColorStop(0.5, '#16213e');
+            gradient.addColorStop(1, '#0f3460');
+            ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, 640, 480);
-            
+
+            // 地面
+            ctx.fillStyle = '#2c3e50';
+            ctx.fillRect(0, 350, 640, 130);
+            ctx.fillStyle = '#34495e';
+            ctx.fillRect(0, 350, 640, 5);
+
+            // 敌人区域
+            ctx.fillStyle = 'rgba(231, 76, 60, 0.2)';
+            ctx.beginPath();
+            ctx.ellipse(320, 200, 120, 80, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 敌人
             ctx.fillStyle = '#fff';
             ctx.font = '60px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText(currentBattle.emoji, 320, 150);
-            
+            ctx.fillText(currentBattle.emoji, 320, 180);
+
+            // 敌人信息框
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(180, 220, 280, 60);
+            ctx.strokeStyle = '#e74c3c';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(180, 220, 280, 60);
+
             ctx.fillStyle = '#e74c3c';
             ctx.font = '18px Arial';
-            ctx.fillText(currentBattle.name, 320, 200);
+            ctx.fillText(currentBattle.name, 320, 245);
+
+            // 敌人HP条
+            ctx.fillStyle = '#333';
+            ctx.fillRect(200, 255, 200, 12);
+            let hpPercent = currentBattle.hp / currentBattle.maxHp;
+            ctx.fillStyle = hpPercent > 0.5 ? '#2ecc71' : hpPercent > 0.25 ? '#f39c12' : '#e74c3c';
+            ctx.fillRect(200, 255, 200 * hpPercent, 12);
+            ctx.strokeStyle = '#555';
+            ctx.strokeRect(200, 255, 200, 12);
+
             ctx.fillStyle = '#fff';
-            ctx.font = '14px Arial';
-            ctx.fillText(`HP: ${currentBattle.hp}/${currentBattle.maxHp}`, 320, 225);
-            
+            ctx.font = '12px Arial';
+            ctx.fillText(`HP: ${currentBattle.hp}/${currentBattle.maxHp}`, 320, 265);
+
+            // 玩家区域
+            ctx.fillStyle = 'rgba(52, 152, 219, 0.2)';
+            ctx.beginPath();
+            ctx.ellipse(480, 380, 60, 40, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 玩家角色
+            ctx.fillStyle = '#3498db';
+            ctx.fillRect(460, 350, 40, 40);
+            ctx.fillStyle = '#5dade2';
+            ctx.fillRect(465, 355, 10, 30);
+            ctx.fillStyle = '#f39c12';
+            ctx.beginPath();
+            ctx.arc(480, 345, 15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#f1c40f';
+            ctx.beginPath();
+            ctx.arc(477, 342, 8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 玩家信息框
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(380, 300, 200, 60);
+            ctx.strokeStyle = '#3498db';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(380, 300, 200, 60);
+
             ctx.fillStyle = '#3498db';
             ctx.font = '18px Arial';
-            ctx.fillText('勇者', 320, 300);
+            ctx.textAlign = 'center';
+            ctx.fillText('勇者', 480, 325);
+
+            // 玩家HP条
+            ctx.fillStyle = '#333';
+            ctx.fillRect(400, 335, 160, 12);
+            let playerHpPercent = player.hp / player.maxHp;
+            ctx.fillStyle = playerHpPercent > 0.5 ? '#2ecc71' : playerHpPercent > 0.25 ? '#f39c12' : '#e74c3c';
+            ctx.fillRect(400, 335, 160 * playerHpPercent, 12);
+            ctx.strokeStyle = '#555';
+            ctx.strokeRect(400, 335, 160, 12);
+
             ctx.fillStyle = '#fff';
-            ctx.font = '14px Arial';
-            ctx.fillText(`HP: ${player.hp}/${player.maxHp}`, 320, 325);
-            
+            ctx.font = '12px Arial';
+            ctx.fillText(`HP: ${player.hp}/${player.maxHp}`, 480, 345);
+
+            // 操作按钮
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(180, 410, 280, 50);
+            ctx.strokeStyle = '#f1c40f';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(180, 410, 280, 50);
+
             ctx.fillStyle = '#f1c40f';
             ctx.font = '16px Arial';
-            ctx.fillText('[1] 攻击  [2] 药水(10金)  [3] 逃跑', 320, 400);
-            
+            ctx.fillText('[1] 攻击  [2] 药水(10金)  [3] 逃跑', 320, 440);
+
+            // 战斗日志
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(20, 410, 140, 60);
+            ctx.strokeStyle = '#888';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(20, 410, 140, 60);
+
             ctx.fillStyle = '#888';
             ctx.font = '12px Arial';
             ctx.textAlign = 'left';
-            for (let i = 0; i < battleLog.length; i++) {
-                ctx.fillText(battleLog[i], 50, 440 + i * 15);
+            for (let i = 0; i < Math.min(battleLog.length, 3); i++) {
+                ctx.fillText(battleLog[i], 30, 430 + i * 15);
             }
         }
         

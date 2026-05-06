@@ -7,20 +7,58 @@ class Renderer {
     constructor(canvasId) {
         this.canvas = document.getElementById(canvasId);
         this.ctx = this.canvas.getContext('2d');
-        
+
         // 动画计数器
         this.animFrame = 0;
         this.animTimer = 0;
         this.animSpeed = 10; // 每10帧切换一次动画
-        
+
         // 时间（用于昼夜循环）
         this.gameTime = 0; // 0-1440（24小时 * 60分钟）
         this.timeSpeed = 0.5; // 游戏时间速度
+
+        // 精灵缓存
+        this.spriteCache = {};
     }
     
     // 清屏
     clear() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+
+    // 加载精灵到缓存
+    loadSprite(name, spriteData) {
+        if (!spriteData || !spriteData.pixels) return;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = spriteData.width;
+        canvas.height = spriteData.height;
+        const ctx = canvas.getContext('2d');
+
+        for (let y = 0; y < spriteData.height; y++) {
+            for (let x = 0; x < spriteData.width; x++) {
+                const color = spriteData.pixels[y * spriteData.width + x];
+                if (color && color !== 'transparent') {
+                    ctx.fillStyle = color;
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+        }
+
+        this.spriteCache[name] = canvas;
+    }
+
+    // 绘制精灵
+    drawSprite(name, screenX, screenY, scale = 1) {
+        const sprite = this.spriteCache[name];
+        if (!sprite) return false;
+
+        if (scale === 1) {
+            this.ctx.drawImage(sprite, screenX, screenY);
+        } else {
+            this.ctx.drawImage(sprite, screenX, screenY, sprite.width * scale, sprite.height * scale);
+        }
+        return true;
     }
     
     // 更新动画帧
@@ -53,32 +91,38 @@ class Renderer {
     drawTile(x, y, type, cameraX, cameraY) {
         let screenX = (x - cameraX) * CONFIG.TILE_SIZE;
         let screenY = (y - cameraY) * CONFIG.TILE_SIZE;
-        
+
         // 跳过屏幕外的瓦片
         if (screenX < -CONFIG.TILE_SIZE || screenX > this.canvas.width ||
             screenY < -CONFIG.TILE_SIZE || screenY > this.canvas.height) {
             return;
         }
-        
+
         let color;
         let frame = this.getAnimFrame(60);
-        
+
         switch(type) {
             case CONFIG.TILE_TYPES.GRASS:
-                color = CONFIG.COLORS.GRASS;
-                this.ctx.fillStyle = color;
-                this.ctx.fillRect(screenX, screenY, CONFIG.TILE_SIZE, CONFIG.TILE_SIZE);
+                // 尝试使用精灵
+                if (!this.drawSprite('GRASS', screenX, screenY, CONFIG.TILE_SIZE / 16)) {
+                    color = CONFIG.COLORS.GRASS;
+                    this.ctx.fillStyle = color;
+                    this.ctx.fillRect(screenX, screenY, CONFIG.TILE_SIZE, CONFIG.TILE_SIZE);
+                }
                 break;
                 
             case CONFIG.TILE_TYPES.TREE:
-                // 树干
-                this.ctx.fillStyle = '#5D4037';
-                this.ctx.fillRect(screenX + 24, screenY + 32, 16, 32);
-                // 树冠
-                this.ctx.fillStyle = CONFIG.COLORS.TREE_TOP;
-                this.ctx.beginPath();
-                this.ctx.arc(screenX + 32, screenY + 24, 20, 0, Math.PI * 2);
-                this.ctx.fill();
+                // 尝试使用精灵
+                if (!this.drawSprite('TREE', screenX, screenY, CONFIG.TILE_SIZE / 32)) {
+                    // 树干
+                    this.ctx.fillStyle = '#5D4037';
+                    this.ctx.fillRect(screenX + 24, screenY + 32, 16, 32);
+                    // 树冠
+                    this.ctx.fillStyle = CONFIG.COLORS.TREE_TOP;
+                    this.ctx.beginPath();
+                    this.ctx.arc(screenX + 32, screenY + 24, 20, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
                 break;
                 
             case CONFIG.TILE_TYPES.WATER:
@@ -99,30 +143,36 @@ class Renderer {
                 break;
                 
             case CONFIG.TILE_TYPES.HOUSE_WALL:
-                color = CONFIG.COLORS.HOUSE_WALL;
-                this.ctx.fillStyle = color;
-                this.ctx.fillRect(screenX, screenY, CONFIG.TILE_SIZE, CONFIG.TILE_SIZE);
-                // 砖块纹理
-                this.ctx.strokeStyle = '#6D3A1A';
-                this.ctx.lineWidth = 1;
-                this.ctx.strokeRect(screenX + 2, screenY + 2, 30, 15);
-                this.ctx.strokeRect(screenX + 34, screenY + 2, 28, 15);
-                this.ctx.strokeRect(screenX + 2, screenY + 19, 20, 15);
-                this.ctx.strokeRect(screenX + 24, screenY + 19, 38, 15);
+                // 尝试使用精灵
+                if (!this.drawSprite('HOUSE_WALL', screenX, screenY, CONFIG.TILE_SIZE / 16)) {
+                    color = CONFIG.COLORS.HOUSE_WALL;
+                    this.ctx.fillStyle = color;
+                    this.ctx.fillRect(screenX, screenY, CONFIG.TILE_SIZE, CONFIG.TILE_SIZE);
+                    // 砖块纹理
+                    this.ctx.strokeStyle = '#6D3A1A';
+                    this.ctx.lineWidth = 1;
+                    this.ctx.strokeRect(screenX + 2, screenY + 2, 30, 15);
+                    this.ctx.strokeRect(screenX + 34, screenY + 2, 28, 15);
+                    this.ctx.strokeRect(screenX + 2, screenY + 19, 20, 15);
+                    this.ctx.strokeRect(screenX + 24, screenY + 19, 38, 15);
+                }
                 break;
                 
             case CONFIG.TILE_TYPES.HOUSE_DOOR:
-                // 门框
-                this.ctx.fillStyle = CONFIG.COLORS.HOUSE_WALL;
-                this.ctx.fillRect(screenX, screenY, CONFIG.TILE_SIZE, CONFIG.TILE_SIZE);
-                // 门
-                this.ctx.fillStyle = CONFIG.COLORS.HOUSE_DOOR;
-                this.ctx.fillRect(screenX + 16, screenY + 10, 32, 54);
-                // 门把手
-                this.ctx.fillStyle = '#FFD700';
-                this.ctx.beginPath();
-                this.ctx.arc(screenX + 40, screenY + 40, 4, 0, Math.PI * 2);
-                this.ctx.fill();
+                // 尝试使用精灵
+                if (!this.drawSprite('HOUSE_DOOR', screenX, screenY, CONFIG.TILE_SIZE / 16)) {
+                    // 门框
+                    this.ctx.fillStyle = CONFIG.COLORS.HOUSE_WALL;
+                    this.ctx.fillRect(screenX, screenY, CONFIG.TILE_SIZE, CONFIG.TILE_SIZE);
+                    // 门
+                    this.ctx.fillStyle = CONFIG.COLORS.HOUSE_DOOR;
+                    this.ctx.fillRect(screenX + 16, screenY + 10, 32, 54);
+                    // 门把手
+                    this.ctx.fillStyle = '#FFD700';
+                    this.ctx.beginPath();
+                    this.ctx.arc(screenX + 40, screenY + 40, 4, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
                 break;
                 
             case CONFIG.TILE_TYPES.TALL_GRASS:
@@ -145,20 +195,23 @@ class Renderer {
                 break;
                 
             case CONFIG.TILE_TYPES.FLOWER:
-                // 草地背景
-                this.ctx.fillStyle = CONFIG.COLORS.GRASS;
-                this.ctx.fillRect(screenX, screenY, CONFIG.TILE_SIZE, CONFIG.TILE_SIZE);
-                // 花朵
-                let flowerColors = [CONFIG.COLORS.FLOWER_PINK, CONFIG.COLORS.FLOWER_RED, CONFIG.COLORS.FLOWER_YELLOW];
-                let flowerColor = flowerColors[(x + y) % 3];
-                this.ctx.fillStyle = flowerColor;
-                this.ctx.beginPath();
-                this.ctx.arc(screenX + 32, screenY + 32, 8, 0, Math.PI * 2);
-                this.ctx.fill();
-                this.ctx.fillStyle = '#FFD700';
-                this.ctx.beginPath();
-                this.ctx.arc(screenX + 32, screenY + 32, 4, 0, Math.PI * 2);
-                this.ctx.fill();
+                // 尝试使用精灵
+                if (!this.drawSprite('GRASS_FLOWER', screenX, screenY, CONFIG.TILE_SIZE / 16)) {
+                    // 草地背景
+                    this.ctx.fillStyle = CONFIG.COLORS.GRASS;
+                    this.ctx.fillRect(screenX, screenY, CONFIG.TILE_SIZE, CONFIG.TILE_SIZE);
+                    // 花朵
+                    let flowerColors = [CONFIG.COLORS.FLOWER_PINK, CONFIG.COLORS.FLOWER_RED, CONFIG.COLORS.FLOWER_YELLOW];
+                    let flowerColor = flowerColors[(x + y) % 3];
+                    this.ctx.fillStyle = flowerColor;
+                    this.ctx.beginPath();
+                    this.ctx.arc(screenX + 32, screenY + 32, 8, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.fillStyle = '#FFD700';
+                    this.ctx.beginPath();
+                    this.ctx.arc(screenX + 32, screenY + 32, 4, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
                 break;
                 
             case CONFIG.TILE_TYPES.BRIDGE:

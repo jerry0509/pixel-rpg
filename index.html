@@ -40,7 +40,10 @@ canvas{border:3px solid #16213e;image-rendering:pixelated;image-rendering:crisp-
 const CFG={
 W:1280,H:768,TS:64,MW:100,MH:80,VX:20,VY:12,
 MOVE_DELAY:100,RUN_DELAY:50,
-T:{GRASS:0,TREE:1,WATER:2,PATH:3,WALL:4,DOOR:5,TGRASS:6,FLOWER:7,BRIDGE:8,MTN:10,LAVA:11,SWAMP:12,CHEST:13,TORCH:14,SIGN:15,ALTAR:18,FOUNTAIN:19,DEV_HOUSE:20,FLOOR:21,IWALL:22,EXIT:23,BOOK:24,BED:25,COUNTER:26,ANVIL:27,ROOF:28,GATE:29},
+T:{GRASS:0,TREE:1,WATER:2,PATH:3,WALL:4,DOOR:5,TGRASS:6,FLOWER:7,BRIDGE:8,MTN:10,LAVA:11,SWAMP:12,CHEST:13,TORCH:14,SIGN:15,ALTAR:18,FOUNTAIN:19,DEV_HOUSE:20,FLOOR:21,IWALL:22,EXIT:23,BOOK:24,BED:25,COUNTER:26,ANVIL:27,ROOF:28,GATE:29,ROCK:50,FENCE:51,HEDGE:52,LANTERN:53,BENCH:54,STATUE_D:55,
+ROOF_TL:30,ROOF_TM:31,ROOF_TR:32,ROOF_BL:33,ROOF_BM:34,ROOF_BR:35,
+WALL_WIN:36,WALL_PLAIN:37,WALL_LCOR:38,WALL_RCOR:39,
+DOOR_TOP:40,DOOR_BOT:41,FOUND_L:42,FOUND_M:43,FOUND_R:44,STEP:45,SHADOW:46},
 ELEM:{fire:{strong:'ice',weak:'water'},ice:{strong:'thunder',weak:'fire'},thunder:{strong:'water',weak:'ice'},water:{strong:'fire',weak:'thunder'},light:{strong:'dark',weak:'dark'},dark:{strong:'light',weak:'light'},poison:{strong:'normal',weak:'fire'},normal:{strong:'',weak:''}},
 ENC_RATE:0.05,CRIT:0.1,CRIT_M:1.5,ESC:0.5
 };
@@ -120,17 +123,17 @@ ldragon_s:{name:'传说龙鳞',p:1500},genesis_k:{name:'创世之钥',p:0}
 const MONS={
 slime:{n:'史莱姆',e:'🟢',hp:20,atk:5,def:2,exp:10,gold:5,el:'normal',d:['slime_j'],cr:0.5},
 butterfly:{n:'蝴蝶',e:'🦋',hp:15,atk:3,def:1,exp:8,gold:3,el:'normal',d:['butter_d'],cr:0.6},
-wolf:{n:'小狼',e:'🐺',hp:30,atk:8,def:3,exp:15,gold:8,el:'normal',d:['wolf_p'],cr:0.4},
+wolf:{n:'小狼',e:'🐺',hp:30,atk:8,def:3,exp:15,gold:8,el:'normal',d:['wolf_p'],cr:0.4,behavior:'wolf'},
 boar:{n:'野猪',e:'🐗',hp:45,atk:12,def:5,exp:20,gold:10,el:'normal',d:['wolf_p'],cr:0.35},
-bat:{n:'蝙蝠',e:'🦇',hp:40,atk:12,def:5,exp:20,gold:12,el:'dark',d:['bat_w'],cr:0.45},
+bat:{n:'蝙蝠',e:'🦇',hp:40,atk:12,def:5,exp:20,gold:12,el:'dark',d:['bat_w'],cr:0.45,behavior:'bat'},
 snake:{n:'毒蛇',e:'🐍',hp:50,atk:15,def:6,exp:25,gold:15,el:'poison',d:['snake_g'],cr:0.35},
-treant:{n:'树精',e:'🌳',hp:80,atk:18,def:12,exp:35,gold:20,el:'normal',d:['leaf'],cr:0.25},
+treant:{n:'树精',e:'🌳',hp:80,atk:18,def:12,exp:35,gold:20,el:'normal',d:['leaf'],cr:0.25,behavior:'treant'},
 fsprite:{n:'森林精灵',e:'🧚',hp:35,atk:10,def:3,exp:18,gold:12,el:'normal',d:['leaf'],cr:0.4},
-fsalam:{n:'火蜥蜴',e:'🦎',hp:100,atk:25,def:15,exp:40,gold:25,el:'fire',d:['fire_s'],cr:0.25},
+fsalam:{n:'火蜥蜴',e:'🦎',hp:100,atk:25,def:15,exp:40,gold:25,el:'fire',d:['fire_s'],cr:0.25,behavior:'fire_salamander'},
 rgolem:{n:'岩石怪',e:'🗿',hp:150,atk:20,def:30,exp:50,gold:30,el:'normal',d:['rock_c'],cr:0.2},
 fbird:{n:'火焰鸟',e:'🐦',hp:120,atk:35,def:10,exp:55,gold:35,el:'fire',d:['fire_f'],cr:0.2},
 mslime:{n:'岩浆史莱姆',e:'🔴',hp:80,atk:22,def:8,exp:30,gold:18,el:'fire',d:['fire_s'],cr:0.3},
-skeleton:{n:'骷髅兵',e:'💀',hp:180,atk:35,def:20,exp:60,gold:40,el:'dark',d:['bone'],cr:0.2},
+skeleton:{n:'骷髅兵',e:'💀',hp:180,atk:35,def:20,exp:60,gold:40,el:'dark',d:['bone'],cr:0.2,behavior:'skeleton'},
 dknight:{n:'暗影骑士',e:'🗡️',hp:250,atk:45,def:35,exp:80,gold:55,el:'dark',d:['dark_s'],cr:0.15},
 necro:{n:'死灵法师',e:'🧙',hp:200,atk:50,def:15,exp:90,gold:60,el:'dark',d:['m_book'],cr:0.15},
 ghost:{n:'幽灵',e:'👻',hp:120,atk:30,def:5,exp:45,gold:30,el:'dark',d:['dark_s'],cr:0.3},
@@ -140,7 +143,7 @@ sslime:{n:'沼泽史莱姆',e:'🟤',hp:200,atk:40,def:20,exp:70,gold:45,el:'poi
 gargoyle:{n:'石像鬼',e:'🗿',hp:400,atk:50,def:60,exp:120,gold:80,el:'normal',d:['garg_f'],cr:0.1},
 awarrior:{n:'远古战士',e:'⚔️',hp:350,atk:65,def:45,exp:130,gold:85,el:'normal',d:['ancient_w'],cr:0.1},
 statue:{n:'石像',e:'🗽',hp:500,atk:40,def:80,exp:100,gold:60,el:'normal',d:['garg_f'],cr:0.08},
-dkin:{n:'龙裔',e:'🐲',hp:500,atk:70,def:50,exp:150,gold:100,el:'fire',d:['dragon_b'],cr:0.1},
+dkin:{n:'龙裔',e:'🐲',hp:500,atk:70,def:50,exp:150,gold:100,el:'fire',d:['dragon_b'],cr:0.1,behavior:'dragon_kin'},
 dknight_d:{n:'龙骑士',e:'🛡️',hp:600,atk:80,def:60,exp:180,gold:120,el:'fire',d:['dk_armor'],cr:0.08},
 fwyrm:{n:'火龙蜥',e:'🔥',hp:450,atk:65,def:45,exp:140,gold:90,el:'fire',d:['fire_s'],cr:0.12}
 };
@@ -152,27 +155,43 @@ fire_d:{n:'火龙',e:'🐉',hp:800,atk:60,def:40,exp:400,gold:400,el:'fire',weak
 demon_k:{n:'魔王',e:'👹',hp:1500,atk:80,def:50,exp:800,gold:800,el:'dark',weak:'light',d:['demon_h']},
 swamp_k:{n:'沼泽之王',e:'🐊',hp:2000,atk:90,def:60,exp:1000,gold:1000,el:'poison',weak:'fire',d:['swamp_h']},
 golem:{n:'远古巨像',e:'🗿',hp:2500,atk:100,def:80,exp:1200,gold:1200,el:'normal',weak:'thunder',d:['ancient_c']},
-dragon:{n:'远古巨龙',e:'🐲',hp:3000,atk:120,def:90,exp:1500,gold:1500,el:'fire',weak:'ice',d:['ldragon_s']},
+dragon:{n:'远古巨龙',e:'🐲',hp:5000,atk:180,def:120,exp:2500,gold:2500,el:'fire',weak:'ice',d:['ldragon_s']},
 dev:{n:'游戏开发者',e:'🎮',hp:9999,atk:200,def:150,exp:9999,gold:9999,el:'normal',weak:null,d:['genesis_sword'],isFinal:true}
 };
+
+// ============================================================
+// 隐藏宝箱数据
+// ============================================================
+const HIDDEN_CHESTS=[
+{id:'hc_grass_1',map:'grassland',x:15,y:25,reward:{t:'g',v:200},desc:'草丛深处的宝箱'},
+{id:'hc_grass_2',map:'grassland',x:85,y:15,reward:{t:'i',id:'atk_pot'},desc:'树根下的宝箱'},
+{id:'hc_forest_1',map:'forest',x:30,y:60,reward:{t:'i',id:'potion_l'},desc:'古树洞穴中的宝箱'},
+{id:'hc_forest_2',map:'forest',x:70,y:20,reward:{t:'g',v:500},desc:'蘑菇圈中的宝箱',cond:'night'},
+{id:'hc_volcano_1',map:'volcano',x:25,y:45,reward:{t:'i',id:'f_sword'},desc:'岩浆旁的宝箱'},
+{id:'hc_volcano_2',map:'volcano',x:75,y:70,reward:{t:'g',v:800},desc:'火山口的宝箱',cond:'night'},
+{id:'hc_castle_1',map:'castle',x:40,y:30,reward:{t:'i',id:'l_armor'},desc:'王座下的宝箱',cond:'boss_defeated'},
+{id:'hc_swamp_1',map:'swamp',x:60,y:40,reward:{t:'i',id:'guard_ring'},desc:'沼泽深处的宝箱'},
+{id:'hc_ruins_1',map:'ruins',x:20,y:60,reward:{t:'g',v:1000},desc:'遗迹密室的宝箱',cond:'has_ancient_c'},
+{id:'hc_dragon_1',map:'dragon',x:80,y:20,reward:{t:'i',id:'l_ring'},desc:'龙巢深处的宝箱',cond:'night'}
+];
 
 // ============================================================
 // NPC数据
 // ============================================================
 const NPCS={
-chief:{n:'村长',x:75,y:22,m:'village',dir:'down',
+chief:{n:'村长',x:75,y:21,m:'village',dir:'down',
 d:['欢迎来到新手村！这里是世界上最安全的地方...','...除了村口那只史莱姆，它昨天偷吃了我的早餐。','对了，你知道吗？森林深处有个神秘祭坛...','嘘！别告诉别人是我告诉你的。'],
 fd:['你变强了不少啊！来，这个给你。','其实...那间工作室的门，需要8个Boss的掉落物才能打开。']},
-merchant:{n:'商人',x:50,y:34,m:'village',dir:'down',
+merchant:{n:'商人',x:50,y:33,m:'village',dir:'down',
 d:['欢迎光临！要买点什么吗？','我这里什么都有，价格公道！','蓝药水要不要？恢复MP的，30金币一瓶！'],
 fd:['看在老顾客份上，给你打个折！']},
-innkeeper:{n:'旅馆老板',x:75,y:57,m:'village',dir:'down',
+innkeeper:{n:'旅馆老板',x:75,y:63,m:'village',dir:'down',
 d:['住一晚10金币，包早餐。','你有没有觉得这游戏有点怪？','比如...为什么我们都能说话？','算了，别想太多，睡吧。'],
 fd:['给你留了最好的房间！']},
-blacksmith:{n:'铁匠',x:20,y:57,m:'village',dir:'down',
+blacksmith:{n:'铁匠',x:20,y:63,m:'village',dir:'down',
 d:['我这把剑可是祖传的！','我爷爷的爷爷的爷爷...','反正很厉害就是了！'],
 fd:['我可以帮你打造更强的武器！']},
-hunter:{n:'猎人',x:30,y:35,m:'grassland',dir:'down',
+hunter:{n:'猎人',x:20,y:25,m:'grassland',dir:'down',
 d:['嘘！别吓跑我的猎物！','野猪王最怕火！用火属性攻击能打出双倍伤害！'],
 fd:['草原东边有个隐藏的沼泽入口...']},
 traveler:{n:'迷路的旅人',x:50,y:30,m:'forest',dir:'down',
@@ -294,7 +313,7 @@ t:[
 [22,21,21,21,21,21,23,21,21,21,21,21,21,22],
 [22,22,22,22,22,22,22,22,22,22,22,22,22,22]]},
 // 旅馆 - 有床、桌子、椅子
-inn:{n:'旅馆',w:14,h:12,ret:'village',rx:75,ry:56,
+inn:{n:'旅馆',w:14,h:12,ret:'village',rx:75,ry:63,
 t:[
 [28,28,28,28,28,28,28,28,28,28,28,28,28,28],
 [22,21,21,21,21,21,21,21,21,21,21,21,21,22],
@@ -309,7 +328,7 @@ t:[
 [22,21,21,21,21,21,23,21,21,21,21,21,21,22],
 [22,22,22,22,22,22,22,22,22,22,22,22,22,22]]},
 // 铁匠铺 - 有铁砧、熔炉
-smithy:{n:'铁匠铺',w:14,h:12,ret:'village',rx:20,ry:56,
+smithy:{n:'铁匠铺',w:14,h:12,ret:'village',rx:20,ry:63,
 t:[
 [28,28,28,28,28,28,28,28,28,28,28,28,28,28],
 [22,21,21,21,21,21,21,21,21,21,21,21,21,22],
@@ -325,7 +344,7 @@ t:[
 [22,22,22,22,22,22,22,22,22,22,22,22,22,22]]}
 };
 
-const DOOR_MAP={'village_18_18':'player_home','village_75_20':'chief_home','village_50_32':'shop','village_75_62':'inn','village_20_62':'smithy'};
+const DOOR_MAP={'village_18_17':'player_home','village_75_19':'chief_home','village_50_31':'shop','village_75_61':'inn','village_20_61':'smithy'};
 
 // ============================================================
 // 输入系统
@@ -351,7 +370,22 @@ this.palette={
 'j':'#f39c12','k':'#ffd700','l':'#ff69b4','m':'#6b4a8e','n':'#2e1a47','o':'#708090',
 'p':'#505050','q':'#deb887','r':'#8b6914','s':'#ff8c00','t':'#ff4500','u':'#2c1810',
 'v':'#1e90ff','w':'#40e0d0','x':'#8b4513','y':'#6b8e23','z':'#f5f5dc',
-'0':'#00000000'
+'B':'#b87333','E':'#c0392b',
+'C':'#ffd080','D':'#6ab4f7','F':'#e8a040','X':'#ffe8a0','Y':'#ffe0c0',
+'A':'#8B2500','G':'#CD6839','H':'#E8A060',
+'I':'#C4A882','J':'#D4C4A8','K':'#E8D5B8','L':'#F5E6D0',
+'M':'#4A3520','N':'#87CEEB','O':'#5F9EA0',
+'P':'#3D2010','Q':'#696969','R':'#808080','S':'#A9A9A9',
+'T':'#B8860B','U':'#DEB887','V':'#5A4A3A','W':'#F0E0C8','Z':'#A0522D',
+'0':'#00000000',
+// Coromon风格扩展调色板
+'!':'#8CD858','@':'#2C7214','#':'#78C8F8','$':'#2068A0',
+'%':'#70C848','^':'#A08858','&':'#E8D0A0','*':'#F0D050',
+'(':'#F07888',')':'#F0F0E0','-':'#685028','+':'#A08050',
+'=':'#C09060','[':'#806030',']':'#C8C0B0','{':'#686058',
+'}':'#4898D8','|':'#3080C0',';':'#5CB038',':':'#3C8820',
+',':'#7CC848','.':'#00000000','<':'#D8B888','>':'#B89868',
+'/':'#F88028','?':'#C03810','~':'#70C0A0','`':'#508870'
 };
 this.tiles={};
 this.chars={};
@@ -374,150 +408,241 @@ c.putImageData(img,0,0);return cv
 }
 
 init(){
-// === Grass tile ===
-this.tiles.grass=this.makeFrames([
-'7777777777777777'+
-'7787777777877777'+
-'7777797777777977'+
-'7777778777777787'+
-'7777777777777777'+
-'8777777787777777'+
-'7777777777777977'+
-'7777877777778777'+
-'7777777777777777'+
-'7779777777797777'+
-'7787777787777777'+
-'7777777777777777'+
-'7777777877777777'+
-'7777777777777977'+
-'7777777777777777'+
-'7777777777777777']);
+// === Grass tile (32x32 seamless - Coromon style) ===
+this.grassCache={sprites:[],edgeSprites:{}};
+(function(){
+function hash(x,y,f){let h=x*374761393+y*668265263+f*1274126177;h=(h^(h>>13))*1103515245;return((h^(h>>16))>>>0)/4294967296}
+var bases=[[32,110,71],[57,80,52],[45,100,60],[28,95,55]];
+var vr=[[0,0,0],[-5,8,-3],[5,-5,3],[-3,3,5]];
+for(var v=0;v<4;v++){
+this.grassCache.sprites[v]=[];
+for(var fi=0;fi<120;fi++){
+var cv=document.createElement('canvas');cv.width=32;cv.height=32;
+var cx=cv.getContext('2d');var id=cx.createImageData(32,32);
+var bR=bases[v][0],bG=bases[v][1],bB=bases[v][2];
+for(var py=0;py<32;py++)for(var px2=0;px2<32;px2++){
+var idx=(py*32+px2)*4;var n=(hash(px2,py,fi)-0.5)*20;
+id.data[idx]=Math.max(0,Math.min(255,bR+n+vr[v][0]));
+id.data[idx+1]=Math.max(0,Math.min(255,bG+n*0.85+vr[v][1]));
+id.data[idx+2]=Math.max(0,Math.min(255,bB+n*0.7+vr[v][2]));id.data[idx+3]=255}
+for(var i=0;i<22;i++){
+var bx=Math.floor(hash(i,0,fi+v)*28)+2;
+var by=Math.floor(hash(0,i,fi+v)*22)+5;
+var bl=3+Math.floor(hash(i,i,fi)*7);
+for(var j=0;j<bl&&by+j<32;j++){
+var idx2=((by+j)*32+bx)*4;
+var sh=Math.sin(j*0.7)*0.6+0.4;
+if(j%2===0){id.data[idx2]=Math.max(0,id.data[idx2]-15*sh);id.data[idx2+1]=Math.min(255,id.data[idx2+1]+18*sh);id.data[idx2+2]=Math.max(0,id.data[idx2+2]-10*sh)}
+else{id.data[idx2]=Math.min(255,id.data[idx2]+8*sh);id.data[idx2+1]=Math.max(0,id.data[idx2+1]-5*sh)}}}
+if(hash(v,fi,99)<0.15){
+var fx=Math.floor(hash(fi,v,77)*26)+3;var fy=Math.floor(hash(v,fi,55)*22)+5;
+var fc=[[220,190,60],[240,240,224],[220,140,160]][Math.floor(hash(fi,v,33)*3)];
+var fi2=(fy*32+fx)*4;if(fi2+3<id.data.length){id.data[fi2]=fc[0];id.data[fi2+1]=fc[1];id.data[fi2+2]=fc[2];id.data[fi2+3]=255}}
+if(hash(v,fi,55)<0.08){
+var sx=Math.floor(hash(fi,v,88)*18)+7;var sy=Math.floor(hash(v,fi,44)*14)+9;
+for(var sp=0;sp<8;sp++){
+var spx=sx+Math.floor(hash(sp,fi,22)*5);var spy=sy+Math.floor(hash(fi,sp,11)*4);
+if(spx>=0&&spx<32&&spy>=0&&spy<32){var si=(spy*32+spx)*4;id.data[si]=Math.max(0,id.data[si]-25);id.data[si+1]=Math.max(0,id.data[si+1]-22);id.data[si+2]=Math.max(0,id.data[si+2]-15)}}}
+cx.putImageData(id,0,0);this.grassCache.sprites[v].push(cv)}}
+// Generate 16 wavy edge sprites for grass-path transitions
+var dirs=['n','s','e','w'];
+for(var d=0;d<4;d++){
+var dir=dirs[d];this.grassCache.edgeSprites[dir]=[];
+for(var fi=0;fi<120;fi++){
+var cv2=document.createElement('canvas');cv2.width=32;cv2.height=32;
+var cx2=cv2.getContext('2d');var id2=cx2.createImageData(32,32);
+// Copy base grass pixels
+var bv=fi%4;var src=this.grassCache.sprites[bv][fi];
+if(src){var srcData=src.getContext('2d').getImageData(0,0,32,32).data;
+for(var k=0;k<id2.data.length;k++)id2.data[k]=srcData[k]}
+// Apply wavy transparent edge
+for(var p=0;p<32;p++){
+var wave=Math.floor(Math.sin(p*0.5+fi*0.12)*2.2+0.5);
+if(dir==='n'){
+var cutoff=4+wave;for(var q=0;q<cutoff&&q<32;q++){var pi=(q*32+p)*4;id2.data[pi+3]=0}
+for(var q2=Math.max(0,cutoff-1);q2<Math.min(32,cutoff+1);q2++){var pi2=(q2*32+p)*4;var rp=(hash(p,q2,fi*13+7)-0.5)*22;
+id2.data[pi2]=Math.max(0,Math.min(255,42+rp));id2.data[pi2+1]=Math.max(0,Math.min(255,100+rp));id2.data[pi2+2]=Math.max(0,Math.min(255,42+rp));id2.data[pi2+3]=230}}
+else if(dir==='s'){
+var cutoff2=28+wave;for(var q3=Math.max(0,cutoff2);q3<32;q3++){var pi3=(q3*32+p)*4;id2.data[pi3+3]=0}
+for(var q4=Math.max(0,cutoff2-1);q4<Math.min(32,cutoff2+1);q4++){var pi4=(q4*32+p)*4;var rp2=(hash(p,q4,fi*17+3)-0.5)*22;
+id2.data[pi4]=Math.max(0,Math.min(255,42+rp2));id2.data[pi4+1]=Math.max(0,Math.min(255,100+rp2));id2.data[pi4+2]=Math.max(0,Math.min(255,42+rp2));id2.data[pi4+3]=230}}
+else if(dir==='e'){
+var cutoff3=28+wave;for(var q5=0;q5<32;q5++){var ce=Math.max(0,Math.min(31,cutoff3+Math.floor(Math.sin(q5*0.4+fi*0.1)*1.8)));
+for(var px3=Math.max(0,ce);px3<32;px3++){var pi5=(q5*32+px3)*4;id2.data[pi5+3]=0}
+if(ce>0&&ce<32){var pi6=(q5*32+ce)*4;var rp3=(hash(ce,q5,fi*19+11)-0.5)*22;
+id2.data[pi6]=Math.max(0,Math.min(255,42+rp3));id2.data[pi6+1]=Math.max(0,Math.min(255,100+rp3));id2.data[pi6+2]=Math.max(0,Math.min(255,42+rp3));id2.data[pi6+3]=230}}}
+else{
+var cutoff4=4+wave;for(var q6=0;q6<32;q6++){var ce2=Math.max(0,Math.min(31,cutoff4+Math.floor(Math.sin(q6*0.4+fi*0.1)*1.8)));
+for(var px4=0;px4<=ce2&&px4<32;px4++){var pi7=(q6*32+px4)*4;id2.data[pi7+3]=0}
+if(ce2>=0&&ce2<31){var pi8=(q6*32+ce2)*4;var rp4=(hash(ce2,q6,fi*23+5)-0.5)*22;
+id2.data[pi8]=Math.max(0,Math.min(255,42+rp4));id2.data[pi8+1]=Math.max(0,Math.min(255,100+rp4));id2.data[pi8+2]=Math.max(0,Math.min(255,42+rp4));id2.data[pi8+3]=230}}}}
+cx2.putImageData(id2,0,0);this.grassCache.edgeSprites[dir].push(cv2)}}
+}).call(this);
 
-// === Tree tile ===
+// === Tree tile (Coromon style - large canopy with light/shadow gradient) ===
 this.tiles.tree=this.makeFrames([
-'9999999999999999'+
-'9999799999799999'+
-'9997899997899999'+
-'9978879978879999'+
-'9978889988879999'+
-'9997889988799999'+
-'9999789987999999'+
-'999999aa99999999'+
-'999999aa99999999'+
-'99999aa999999999'+
-'99999aa999999999'+
-'99999aa999999999'+
-'99999acc99999999'+
-'9999acc999999999'+
-'9999999999999999'+
-'9999999999999999']);
+'................'+
+'......!!%.......'+
+'....!%%%%%%.....'+
+'...!%%%%%%%8....'+
+'..!!%%%%%%888...'+
+'.!!%%%%%%8888...' +
+'.!%%%%%%88888...' +
+'..!%%%%%88888...' +
+'...%%;%%8888....'+
+'....%%;8888.....'+
+'.....a88........'+
+'.....aaa........'+
+'.....aaa........'+
+'.....aaa........'+
+'.....aaa........'+
+'................']);
 
-// === Water tile (2帧动画) ===
+// === Water tile (Coromon style - 4帧动画，渐变+波纹) ===
 this.tiles.water=this.makeFrames([
+// Frame 0: 波纹位置A
+'}dddddddddddddd}'+
+'dddddddddddddddd'+
+'ddd#ddddddd#dddd'+
 'dddddddddddddddd'+
 'dddddddddddddddd'+
-'ddddfdddddddfdddd'+
+'d#dddddddddd#dddd'+
 'dddddddddddddddd'+
 'dddddddddddddddd'+
-'dfdddddddddfddddd'+
+'ddddd#dddddd#dddd'+
 'dddddddddddddddd'+
 'dddddddddddddddd'+
-'dddddfddddddfdddd'+
-'dddddddddddddddd'+
-'dddddddddddddddd'+
-'dfdddddddddfddddd'+
-'dddddddddddddddd'+
-'dddddddddddddddd'+
-'dddddddddddddddd'+
-'dddddddddddddddd',
-'dddddddddddddddd'+
-'dddddddddddddddd'+
-'ddfddddddddfddddd'+
-'dddddddddddddddd'+
-'dddddddddddddddd'+
-'dddddfddddddfdddd'+
-'dddddddddddddddd'+
-'dddddddddddddddd'+
-'dfdddddddddfddddd'+
-'dddddddddddddddd'+
-'dddddddddddddddd'+
-'dddddfddddddfdddd'+
+'d#dddddddddd#dddd'+
 'dddddddddddddddd'+
 'dddddddddddddddd'+
 'dddddddddddddddd'+
-'dddddddddddddddd']);
+'|dddddddddddddd|',
+// Frame 1: 波纹位置B
+'}dddddddddddddd}'+
+'dddddddddddddddd'+
+'dd#ddddddddddddd'+
+'dddddddddddddddd'+
+'ddddddd#dddddddd'+
+'dddddddddddddddd'+
+'dddddddddddddddd'+
+'d#dddddddddd#dddd'+
+'dddddddddddddddd'+
+'dddddddddddddddd'+
+'ddd#ddddddd#dddd'+
+'dddddddddddddddd'+
+'dddddddddddddddd'+
+'d#dddddddddd#dddd'+
+'dddddddddddddddd'+
+'|dddddddddddddd|',
+// Frame 2: 波纹位置C
+'}dddddddddddddd}'+
+'dddddddddddddddd'+
+'dddddddddddddddd'+
+'d#dddddddddd#dddd'+
+'dddddddddddddddd'+
+'ddd#ddddddd#dddd'+
+'dddddddddddddddd'+
+'dddddddddddddddd'+
+'dd#ddddddddddddd'+
+'ddddddd#dddddddd'+
+'dddddddddddddddd'+
+'dddddddddddddddd'+
+'d#dddddddddd#dddd'+
+'dddddddddddddddd'+
+'dddddddddddddddd'+
+'|dddddddddddddd|',
+// Frame 3: 波纹位置D
+'}dddddddddddddd}'+
+'dddddddddddddddd'+
+'ddddddd#dddddddd'+
+'dddddddddddddddd'+
+'dd#ddddddddddddd'+
+'dddddddddddddddd'+
+'dddddddddddddddd'+
+'ddd#ddddddd#dddd'+
+'dddddddddddddddd'+
+'d#dddddddddd#dddd'+
+'dddddddddddddddd'+
+'ddddddd#dddddddd'+
+'dddddddddddddddd'+
+'dddddddddddddddd'+
+'dd#ddddddddddddd'+
+'|dddddddddddddd|']);
 
-// === Path tile ===
+// === Path tile (Coromon style - 自然纹理，有深浅变化) ===
 this.tiles.path=this.makeFrames([
 'bbbbbbbbbbbbbbbb'+
-'bbbbbbbbbbbbbbbb'+
-'bbbbbabbbbbabbbbb'+
-'bbbbbbbbbbbbbbbb'+
-'bbbbbbbbbbbbbbbb'+
-'bbbbaabbbbaabbbbb'+
+'bb<bbbbbbbb<bbbb'+
+'bbb^abbbbba^bbbb'+
 'bbbbbbbbbbbbbbbb'+
 'bbbbbbbbbbbbbbbb'+
-'bbbbbbbbabbbbbbbb'+
+'bbba^abbbba^abbb'+
+'bbbbbbbbbbbbbbbb'+
+'b<bbbbbbbbbb<bbb'+
+'bbbbbbbbabbbbbbb'+
 'bbbbbbbbbbbbbbbb'+
 'bbbbbbbbbbbbbbbb'+
-'bbbbaabbbbaabbbbb'+
+'bbba^abbbba^abbb'+
 'bbbbbbbbbbbbbbbb'+
 'bbbbbbbbbbbbbbbb'+
-'bbbbbbbbbbbbbbbb'+
+'bbb<bbbbbbbb<bbb'+
 'bbbbbbbbbbbbbbbb']);
 
-// === Tall grass (3帧动画) ===
+// === Tall grass (Coromon style - 3帧动画，更生动的草叶) ===
 this.tiles.tall_grass=this.makeFrames([
+// Frame 0: 草叶直立 - Coromon风格更自然的草叶
 '7777777777777777'+
 '7777777777777777'+
-'7777777777777777'+
-'7787777787777777'+
-'7787777787777777'+
-'7787778787777777'+
-'7787778787777777'+
-'7787778787777777'+
-'7787778787777777'+
-'7787778787777777'+
-'7787778787777777'+
-'7787778787777777'+
-'7787778787777777'+
-'7787778787777777'+
-'7787778787777777'+
-'7787778787777777',
-'7777777777777777'+
-'7777777777777777'+
-'7777777777777777'+
-'8777787778777777'+
-'8777787778777777'+
-'8777787778777777'+
-'8777787778777777'+
-'8777787778777777'+
-'8777787778777777'+
-'8777787778777777'+
-'8777787778777777'+
-'8777787778777777'+
-'8777787778777777'+
-'8777787778777777'+
-'8777787778777777'+
-'8777787778777777',
+'77;77777;77777;7'+
+'77;77777;77777;7'+
+'77;777;7;777;7;7'+
+'77;777;7;777;7;7'+
+'77;777;7;777;7;7'+
+'77;777;7;777;7;7'+
+'77;777;7;777;7;7'+
+'77;777;7;777;7;7'+
+'77;777;7;777;7;7'+
+'77;777;7;777;7;7'+
+'77;777;7;777;7;7'+
+'77;777;7;777;7;7'+
+'77;777;7;777;7;7'+
+'77;777;7;777;7;7',
+// Frame 1: 草叶左倾 - Coromon风格更自然的草叶
 '7777777777777777'+
 '7777777777777777'+
+';7777;7777;77777'+
+';7777;7777;77777'+
+';7777;77;77;77777'+
+';7777;77;77;77777'+
+';7777;77;77;77777'+
+';7777;77;77;77777'+
+';7777;77;77;77777'+
+';7777;77;77;77777'+
+';7777;77;77;77777'+
+';7777;77;77;77777'+
+';7777;77;77;77777'+
+';7777;77;77;77777'+
+';7777;77;77;77777'+
+';7777;77;77;77777',
+// Frame 2: 草叶右倾 - Coromon风格更自然的草叶
 '7777777777777777'+
-'7778777877787777'+
-'7778777877787777'+
-'7778777877787777'+
-'7778777877787777'+
-'7778777877787777'+
-'7778777877787777'+
-'7778777877787777'+
-'7778777877787777'+
-'7778777877787777'+
-'7778777877787777'+
-'7778777877787777'+
-'7778777877787777'+
-'7778777877787777']);
+'7777777777777777'+
+'7777;7777;7777;7'+
+'7777;7777;7777;7'+
+'777;77;777;77;77'+
+'777;77;777;77;77'+
+'777;77;777;77;77'+
+'777;77;777;77;77'+
+'777;77;777;77;77'+
+'777;77;777;77;77'+
+'777;77;777;77;77'+
+'777;77;777;77;77'+
+'777;77;777;77;77'+
+'777;77;777;77;77'+
+'777;77;777;77;77'+
+'777;77;777;77;77']);
 
-// === Mountain tile ===
+// === Mountain tile (Coromon style - 岩石纹理+雪顶) ===
 this.tiles.mountain=this.makeFrames([
 '6666666666666666'+
 '6666666626666666'+
@@ -526,18 +651,19 @@ this.tiles.mountain=this.makeFrames([
 '6666652222256666'+
 '6666555222555666'+
 '6665555222555566'+
-'6655555222555556'+
-'6555555222555555'+
+'665555{55{555556'+
+'655555{55{555555'+
 '5555555555555555'+
+'555555{555555555'+
+'555555555555{555'+
+'5555{55555555555'+
 '5555555555555555'+
-'5555555555555555'+
-'5555555555555555'+
-'5555555555555555'+
-'5555555555555555'+
+'55555555{5555555'+
 '5555555555555555']);
 
-// === Lava tile (2帧) ===
+// === Lava tile (Coromon style - 3帧动画，火焰+气泡) ===
 this.tiles.lava=this.makeFrames([
+// Frame 0: 基础岩浆
 'gggggggggggggggg'+
 'ggghgggggghgggggg'+
 'gggggggggggggggg'+
@@ -554,64 +680,562 @@ this.tiles.lava=this.makeFrames([
 'ggghggggggghggggg'+
 'gggggggggggggggg'+
 'gggggggggggggggg',
+// Frame 1: 气泡上浮
 'hhhhhhhhhhhhhhhh'+
 'hhhhhhhhhhhhhhhh'+
+'hhhghhhhhhhghhhh'+
 'hhhhhhhhhhhhhhhh'+
+'hhhhhhghhhhghhhh'+
 'hhhhhhhhhhhhhhhh'+
+'hghhhhhhhhhhhhhh'+
 'hhhhhhhhhhhhhhhh'+
+'hhhhghhhhhhhghhh'+
 'hhhhhhhhhhhhhhhh'+
+'hhhhhhghhhghhhhh'+
 'hhhhhhhhhhhhhhhh'+
+'hghhhhhhhhhhhhhh'+
 'hhhhhhhhhhhhhhhh'+
-'hhhhhhhhhhhhhhhh'+
-'hhhhhhhhhhhhhhhh'+
-'hhhhhhhhhhhhhhhh'+
-'hhhhhhhhhhhhhhhh'+
-'hhhhhhhhhhhhhhhh'+
-'hhhhhhhhhhhhhhhh'+
-'hhhhhhhhhhhhhhhh'+
-'hhhhhhhhhhhhhhhh']);
+'hhhhghhhhhhhghhh'+
+'hhhhhhhhhhhhhhhh',
+// Frame 2: 气泡下落
+'gggggggggggggggg'+
+'gggghggggggghgggg'+
+'gggggggggggggggg'+
+'ghgggggghgggggggg'+
+'gggggggggggggggg'+
+'ggghggggghggggggg'+
+'gggggggggggggggg'+
+'gggggghggggghgggg'+
+'gggggggggggggggg'+
+'ghggggggghggggggg'+
+'gggggggggggggggg'+
+'gggghggggggghgggg'+
+'gggggggggggggggg'+
+'gggggghgggghggggg'+
+'gggggggggggggggg'+
+'gggggggggggggggg']);
 
-// === Swamp tile ===
+// === Swamp tile (Coromon style - 浑浊水面+睡莲) ===
 this.tiles.swamp=this.makeFrames([
-'y9yyyyyyyyyyyyyy'+
+// Frame 0
+'~y9yyyyyyyyyyyyy~'+
 'yyyyyyyyyyyyyyyy'+
-'yyyyyy9yyyyyy9yyy'+
+'yyyyyy~yyyyyy9yyy'+
+'yyyyyyyyyyyyyyyy'+
+'yy~yyyyyyyyyyyyy'+
+'yy9yyyyyy~yyyyyyy'+
 'yyyyyyyyyyyyyyyy'+
 'yyyyyyyyyyyyyyyy'+
+'yyyyyy9yyyyyy~yyy'+
+'yyyyyyyyyyyyyyyy'+
+'yy~yyyyyyyyyyyyy'+
 'yy9yyyyyy9yyyyyyy'+
 'yyyyyyyyyyyyyyyy'+
 'yyyyyyyyyyyyyyyy'+
-'yyyyyy9yyyyyy9yyy'+
 'yyyyyyyyyyyyyyyy'+
+'~yyyyyyyyyyyyyy~',
+// Frame 1
+'~y9yyyyyyyyyyyyy~'+
 'yyyyyyyyyyyyyyyy'+
+'yyy~yyyyyyy9yyyyy'+
+'yyyyyyyyyyyyyyyy'+
+'yyyyyyyy~yyyyyyyy'+
 'yy9yyyyyy9yyyyyyy'+
 'yyyyyyyyyyyyyyyy'+
+'yy~yyyyyyyyyyyyy'+
+'yyyyyy9yyyyyy9yyy'+
+'yyyyyyyyyyyyyyyy'+
+'yyyyyyyy~yyyyyyyy'+
+'yy9yyyyyy~yyyyyyy'+
 'yyyyyyyyyyyyyyyy'+
 'yyyyyyyyyyyyyyyy'+
-'yyyyyyyyyyyyyyyy']);
+'yyyyyyyyyyyyyyyy'+
+'~yyyyyyyyyyyyyy~']);
+
+// ============================================================
+// Coromon风格建筑图块系统
+// ============================================================
+// --- 屋顶图块 (Roof Tiles) ---
+// 屋顶左上角：深色边缘，内部瓦片纹理
+this.tiles.roof_tl=this.makeFrames([
+'1AAAAAAAAAAAAAAA'+
+'AEEEEEEEEEEEEEE1'+
+'AEggggggggggggE1'+
+'AEggggggggggggE1'+
+'A1111111111111111'+
+'AEggggggggggggE1'+
+'AEggggggggggggE1'+
+'A1111111111111111'+
+'AEggggggggggggE1'+
+'AEggggggggggggE1'+
+'A1111111111111111'+
+'AEggggggggggggE1'+
+'AEggggggggggggE1'+
+'A1111111111111111'+
+'AEggggggggggggE1'+
+'AAAAAAAAAAAAAAAA']);
+
+// 屋顶中间：瓦片行纹理
+this.tiles.roof_tm=this.makeFrames([
+'1111111111111111'+
+'EEEEEEEEEEEEEEEE'+
+'EggggggggggggggE'+
+'EggggggggggggggE'+
+'1111111111111111'+
+'EggggggggggggggE'+
+'EggggggggggggggE'+
+'1111111111111111'+
+'EggggggggggggggE'+
+'EggggggggggggggE'+
+'1111111111111111'+
+'EggggggggggggggE'+
+'EggggggggggggggE'+
+'1111111111111111'+
+'EggggggggggggggE'+
+'1111111111111111']);
+
+// 屋顶右上角：镜像左上角
+this.tiles.roof_tr=this.makeFrames([
+'AAAAAAAAAAAAAAA1'+
+'1EEEEEEEEEEEEEEA'+
+'1EggggggggggggEA'+
+'1EggggggggggggEA'+
+'111111111111111A'+
+'1EggggggggggggEA'+
+'1EggggggggggggEA'+
+'111111111111111A'+
+'1EggggggggggggEA'+
+'1EggggggggggggEA'+
+'111111111111111A'+
+'1EggggggggggggEA'+
+'1EggggggggggggEA'+
+'111111111111111A'+
+'1EggggggggggggEA'+
+'AAAAAAAAAAAAAAA1']);
+
+// 屋顶左下角：底部与墙壁连接
+this.tiles.roof_bl=this.makeFrames([
+'1AAAAAAAAAAAAAAA'+
+'AEEEEEEEEEEEEEE1'+
+'AEggggggggggggE1'+
+'AEggggggggggggE1'+
+'A1111111111111111'+
+'AEggggggggggggE1'+
+'AEggggggggggggE1'+
+'A1111111111111111'+
+'AEggggggggggggE1'+
+'AEggggggggggggE1'+
+'A1111111111111111'+
+'AEggggggggggggE1'+
+'AEggggggggggggE1'+
+'AEEEEEEEEEEEEEE1'+
+'A1111111111111111'+
+'1111111111111111']);
+
+// 屋顶下中：底部过渡到墙壁
+this.tiles.roof_bm=this.makeFrames([
+'1111111111111111'+
+'EEEEEEEEEEEEEEEE'+
+'EggggggggggggggE'+
+'EggggggggggggggE'+
+'1111111111111111'+
+'EggggggggggggggE'+
+'EggggggggggggggE'+
+'1111111111111111'+
+'EggggggggggggggE'+
+'EggggggggggggggE'+
+'1111111111111111'+
+'EggggggggggggggE'+
+'EggggggggggggggE'+
+'EEEEEEEEEEEEEEEE'+
+'1111111111111111'+
+'1111111111111111']);
+
+// 屋顶右下角：镜像左下角
+this.tiles.roof_br=this.makeFrames([
+'AAAAAAAAAAAAAAA1'+
+'1EEEEEEEEEEEEEEA'+
+'1EggggggggggggEA'+
+'1EggggggggggggEA'+
+'111111111111111A'+
+'1EggggggggggggEA'+
+'1EggggggggggggEA'+
+'111111111111111A'+
+'1EggggggggggggEA'+
+'1EggggggggggggEA'+
+'111111111111111A'+
+'1EggggggggggggEA'+
+'1EggggggggggggEA'+
+'1EEEEEEEEEEEEEEA'+
+'111111111111111A'+
+'1111111111111111']);
+
+// --- 墙壁图块 (Wall Tiles) ---
+// 带窗户的墙壁：米色墙面，蓝色窗户，深色窗框
+this.tiles.wall_win=this.makeFrames([
+'1111111111111111'+
+'1KKKKKKKKKKKKKK1'+
+'1KLLLLLLLLLLLLLK1'+
+'1KLLLLLLLLLLLLLK1'+
+'1KJJJJJJJJJJJJJ1'+
+'1KLLLLLLLLLLLLLK1'+
+'1KLLLMNNNNMLLLK1'+
+'1KLLMNOOOONMLLK1'+
+'1KLLMNONNONMLLK1'+
+'1KLLMNOOOONMLLK1'+
+'1KLLLMNNNNMLLLK1'+
+'1KLLLLLLLLLLLLLK1'+
+'1KJJJJJJJJJJJJJ1'+
+'1KLLLLLLLLLLLLLK1'+
+'1KLLLLLLLLLLLLLK1'+
+'1111111111111111']);
+
+// 普通墙壁：Coromon风格砖纹理
+this.tiles.wall_plain=this.makeFrames([
+'1111111111111111'+
+'1KKKKKKKKKKKKKK1'+
+'1KLLLMMLLLLMMLLK1'+
+'1KLLLMMLLLLMMLLK1'+
+'1KJJJJJJJJJJJJJ1'+
+'1KLMLLLLMMLLLLMK1'+
+'1KLMLLLLMMLLLLMK1'+
+'1KJJJJJJJJJJJJJ1'+
+'1KLLLMMLLLLMMLLK1'+
+'1KLLLMMLLLLMMLLK1'+
+'1KJJJJJJJJJJJJJ1'+
+'1KLMLLLLMMLLLLMK1'+
+'1KLMLLLLMMLLLLMK1'+
+'1KJJJJJJJJJJJJJ1'+
+'1KLLLMMLLLLMMLLK1'+
+'1111111111111111']);
+
+// 墙壁左角：左侧加粗边缘
+this.tiles.wall_lcor=this.makeFrames([
+'1111111111111111'+
+'11KKKKKKKKKKKK11'+
+'11LLLLLLLLLLLLK1'+
+'11LLLLLLLLLLLLK1'+
+'11JJJJJJJJJJJJJ1'+
+'11LLLLLLLLLLLLK1'+
+'11LLLLLLLLLLLLK1'+
+'11LLLLLLLLLLLLK1'+
+'11LLLLLLLLLLLLK1'+
+'11LLLLLLLLLLLLK1'+
+'11LLLLLLLLLLLLK1'+
+'11LLLLLLLLLLLLK1'+
+'11JJJJJJJJJJJJJ1'+
+'11LLLLLLLLLLLLK1'+
+'11LLLLLLLLLLLLK1'+
+'1111111111111111']);
+
+// 墙壁右角：右侧加粗边缘
+this.tiles.wall_rcor=this.makeFrames([
+'1111111111111111'+
+'11KKKKKKKKKKKK11'+
+'KLLLLLLLLLLLLL11'+
+'KLLLLLLLLLLLLL11'+
+'1JJJJJJJJJJJJJ11'+
+'KLLLLLLLLLLLLL11'+
+'KLLLLLLLLLLLLL11'+
+'KLLLLLLLLLLLLL11'+
+'KLLLLLLLLLLLLL11'+
+'KLLLLLLLLLLLLL11'+
+'KLLLLLLLLLLLLL11'+
+'KLLLLLLLLLLLLL11'+
+'1JJJJJJJJJJJJJ11'+
+'KLLLLLLLLLLLLL11'+
+'KLLLLLLLLLLLLL11'+
+'1111111111111111']);
+
+// 门上方：门框顶部
+this.tiles.door_top=this.makeFrames([
+'1111111111111111'+
+'1KKKKKKKKKKKKKK1'+
+'1KLLLLLLLLLLLLLK1'+
+'1KLLLLLLLLLLLLLK1'+
+'1KJJJJJJJJJJJJJ1'+
+'1KLLLLLLLLLLLLLK1'+
+'1KLLLPPPPPPPLLK1'+
+'1KLLLPccccPPLLK1'+
+'1KLLLPccccPPLLK1'+
+'1KLLLPccccPPLLK1'+
+'1KLLLPPPPPPPLLK1'+
+'1KLLLLLLLLLLLLLK1'+
+'1KJJJJJJJJJJJJJ1'+
+'1KLLLLLLLLLLLLLK1'+
+'1KLLLLLLLLLLLLLK1'+
+'1111111111111111']);
+
+// 门下方：门板和门把手
+this.tiles.door_bot=this.makeFrames([
+'1111111111111111'+
+'1KKKKKKKKKKKKKK1'+
+'1KLLLLLLLLLLLLLK1'+
+'1KLLLLLLLLLLLLLK1'+
+'1KJJJJJJJJJJJJJ1'+
+'1KLLLLLLLLLLLLLK1'+
+'1KLLLPPPPPPPLLK1'+
+'1KLLLPrrrrPPLLK1'+
+'1KLLLPrrrrPPLLK1'+
+'1KLLLPrrkrPPLLK1'+
+'1KLLLPrrrrPPLLK1'+
+'1KLLLPPPPPPPLLK1'+
+'1KJJJJJJJJJJJJJ1'+
+'1KLLLLLLLLLLLLLK1'+
+'1KLLLLLLLLLLLLLK1'+
+'1111111111111111']);
+
+// --- 地基图块 (Foundation Tiles) ---
+// 地基左侧：石质地基
+this.tiles.found_l=this.makeFrames([
+'1111111111111111'+
+'1QQQQQQQQQQQQQQ1'+
+'1QRRRRRRRRRRRRQ1'+
+'1QRRRRRRRRRRRRQ1'+
+'1QRRRRRRRRRRRRQ1'+
+'1QRRRRRRRRRRRRQ1'+
+'1QRRRRRRRRRRRRQ1'+
+'1QRRRRRRRRRRRRQ1'+
+'1QRRRRRRRRRRRRQ1'+
+'1QRRRRRRRRRRRRQ1'+
+'1QRRRRRRRRRRRRQ1'+
+'1QRRRRRRRRRRRRQ1'+
+'1QRRRRRRRRRRRRQ1'+
+'1QRRRRRRRRRRRRQ1'+
+'1QQQQQQQQQQQQQQ1'+
+'1111111111111111']);
+
+// 地基中间 - Coromon风格石质纹理
+this.tiles.found_m=this.makeFrames([
+'1111111111111111'+
+'QQQQQQQQQQQQQQQQ'+
+'QRRSRRRRRSRRRRRQ'+
+'QRRSRRRRRSRRRRRQ'+
+'QRRRRRRRRRRRRRRQ'+
+'QRRRRRRRRRRRRRRQ'+
+'QSRRRRSRRRRRSRRQ'+
+'QSRRRRSRRRRRSRRQ'+
+'QRRRRRRRRRRRRRRQ'+
+'QRRRRRRRRRRRRRRQ'+
+'QRRSRRRRRSRRRRRQ'+
+'QRRSRRRRRSRRRRRQ'+
+'QRRRRRRRRRRRRRRQ'+
+'QRRRRRRRRRRRRRRQ'+
+'QQQQQQQQQQQQQQQQ'+
+'1111111111111111']);
+
+// 地基右侧
+this.tiles.found_r=this.makeFrames([
+'1111111111111111'+
+'1QQQQQQQQQQQQQQ1'+
+'1QRRRRRRRRRRRRQ1'+
+'1QRRRRRRRRRRRRQ1'+
+'1QRRRRRRRRRRRRQ1'+
+'1QRRRRRRRRRRRRQ1'+
+'1QRRRRRRRRRRRRQ1'+
+'1QRRRRRRRRRRRRQ1'+
+'1QRRRRRRRRRRRRQ1'+
+'1QRRRRRRRRRRRRQ1'+
+'1QRRRRRRRRRRRRQ1'+
+'1QRRRRRRRRRRRRQ1'+
+'1QRRRRRRRRRRRRQ1'+
+'1QRRRRRRRRRRRRQ1'+
+'1QQQQQQQQQQQQQQ1'+
+'1111111111111111']);
+
+// 台阶：门前台阶，上浅下深
+this.tiles.step=this.makeFrames([
+'1111111111111111'+
+'QQQQQQQQQQQQQQQQ'+
+'QRRRRRRRRRRRRRRQ'+
+'QRRRRRRRRRRRRRRQ'+
+'QRRRRRRRRRRRRRRQ'+
+'QRRRRRRRRRRRRRRQ'+
+'QSSSSSSSSSSSSSSQ'+
+'QSSSSSSSSSSSSSSQ'+
+'QSSSSSSSSSSSSSSQ'+
+'QSSSSSSSSSSSSSSQ'+
+'QSSSSSSSSSSSSSSQ'+
+'QQQQQQQQQQQQQQQQ'+
+'1111111111111111'+
+'................'+
+'................'+
+'................']);
+
+// 阴影图块：建筑下方投影
+this.tiles.building_shadow=this.makeFrames([
+'................'+
+'................'+
+'................'+
+'................'+
+'................'+
+'................'+
+'................'+
+'VVVVVVVVVVVVVVVV'+
+'VVVVVVVVVVVVVVVV'+
+'VVVVVVVVVVVVVVVV'+
+'VVVVVVVVVVVVVVVV'+
+'VVVVVVVVVVVVVVVV'+
+'VVVVVVVVVVVVVVVV'+
+'VVVVVVVVVVVVVVVV'+
+'VVVVVVVVVVVVVVVV'+
+'VVVVVVVVVVVVVVVV']);
+
+// ============================================================
+// Coromon风格装饰图块
+// ============================================================
+
+// === Flower tile (草地+小花) - Coromon风格多样花朵 ===
+this.tiles.flower=this.makeFrames([
+'77;777;777;777;7'+
+'7;777;777;777;77'+
+'777;77;777;77;77'+
+';777;77;7;77;777'+
+'77;777;777;777;7'+
+'7;777(*777;77;77'+
+'777;77;777;77;77'+
+';777;77;7;77;777'+
+'77;777;777;777;7'+
+'7;777;777;777;77'+
+'777;77;777;77;77'+
+';777;77;7;77;777'+
+'77;777;)*777;777'+
+'7;777;777;777;77'+
+'777;77;777;77;77'+
+';777;77;7;77;777']);
+
+// === Rock tile (石头/岩石) - Coromon风格立体岩石 ===
+this.tiles.rock=this.makeFrames([
+'7777777777777777'+
+'7777777777777777'+
+'77777]]]77777777'+
+'7777]]]]]7777777'+
+'777]]]]]]]777777'+
+'77]]]]{]]]777777'+
+'77]]]{]]]]777777'+
+'77]]]]]]]]777777'+
+'777]]]]]]]777777'+
+'7777]]]]]7777777'+
+'7777777777777777'+
+'7777777777777777'+
+'7777777777777777'+
+'7777777777777777'+
+'7777777777777777'+
+'7777777777777777']);
+
+// === Fence tile (木栅栏) ===
+this.tiles.fence=this.makeFrames([
+'7777777777777777'+
+'7777777777777777'+
+'7777777777777777'+
+'7777777777777777'+
+'77[a[a[a[a[a[77'+
+'77[a[a[a[a[a[77'+
+'7777777777777777'+
+'7777777777777777'+
+'77[a[a[a[a[a[77'+
+'77[a[a[a[a[a[77'+
+'7777777777777777'+
+'77[a77[a77[a7777'+
+'77[a77[a77[a7777'+
+'77[a77[a77[a7777'+
+'77[a77[a77[a7777'+
+'7777777777777777']);
+
+// === Hedge tile (Coromon style - dark green trimmed bush) ===
+this.tiles.hedge=this.makeFrames([
+'................'+
+'..{{{{{..{{{{{..'+
+'.{{;;;;{{{{{;{..'+
+'{;;;;;;;;{{;;{..'+
+'{;;;;;;;;;;;;{..'+
+'{;;;;;;;;;;;;{..'+
+'{;;;;;;;;;;;;{..'+
+'{;;;;;;;;;;;;{{..'+
+'{;;;;;;;;;;;;{..'+
+'{;;;;;;;;;;;;{..'+
+'{;;;;;;;;;;;;{{..'+
+'{;;;;;;;;;;;;{{..'+
+'.{{;;;;{{{{{;{..'+
+'..{{{{{..{{{{{..'+
+'................'+
+'................']);
+
+// === Lantern tile (Coromon style - post with warm glow) ===
+this.tiles.lantern=this.makeFrames([
+'================'+
+'================'+
+'================'+
+'=======**======='+
+'======?***?====='+
+'======*****====='+
+'======?***?====='+
+'=======**======='+
+'=======**(======'+
+'=======**(======'+
+'=======**(======'+
+'=======**(======'+
+'=======**(======'+
+'=======**(======'+
+'=======**(======'+
+'================']);
+
+
+// === Stone bridge tile ===
+this.tiles.bridge=this.makeFrames([
+'7777]]]]]]]]7777'+
+'777]]]]]]]]]7777'+
+'77]]]]]]]]]]]777'+
+'7]]]]]]]]]]]]]77'+
+']]]]]{]]]{]]]]]7'+
+']]]]{]]]]]]{]]]]'+
+']]]]]]]]]]]]]]]'+
+']]]]{]]]]]]]{]]]'+
+']]]]]]]]]]]]]]]'+
+']]]]{]]]]]{]]]]'+
+']]]]]]]]]]]]]]]'+
+']]]]{]]]]]]]{]]]'+
+']]]]]]]]]]]]]]]'+
+'7]]]]{]]]]]{]]]7'+
+'77]]]]]]]]]]]777'+
+'777]]]]]]]]]7777']);
 
 // === 玩家精灵 ===
-this.chars['player_down_0']=this.decode('....1111...........111111.........11333311........13333331........13233231........13333331.........333333...........3333...........dddddd.........dddddddd........dd.dd.dd........d3.d3.d3.........dddddd..........dd..dd..........aa..aa..........aa..aa.......',16,16);
-this.chars['player_down_1']=this.decode('....1111...........111111.........11333311........13333331........13233231........13333331.........333333...........3333...........dddddd.........dddddddd.......dd..dddd..d.....d3..dd..d3........dddddd.........dd....dd........aa....aa........aa....aa......',16,16);
-this.chars['player_up_0']=this.decode('....1111...........111111.........11111111........11111111........11111111........11111111.........111111...........3333...........dddddd.........dddddddd........dd.dd.dd........dd.dd.dd.........dddddd..........dd..dd..........aa..aa..........aa..aa.......',16,16);
-this.chars['player_up_1']=this.decode('....1111...........111111.........11111111........11111111........11111111........11111111.........111111...........3333...........dddddd.........dddddddd.......dd..dddd..d.....dd..dd..dd........dddddd.........dd....dd........aa....aa........aa....aa......',16,16);
-this.chars['player_left_0']=this.decode('...1111...........111111..........11333311........13333331........13233331........13333331.........333333...........3333..........dddddd.........dddddddd........dd.ddddd........d3.dddd..........dddddd..........dd..dd..........aa..aa..........aa..aa........',16,16);
-this.chars['player_left_1']=this.decode('...1111...........111111..........11333311........13333331........13233331........13333331.........333333...........3333..........dddddd.........dddddddd.......ddddddddd.......d3dddddd..........dddddd.........dd....dd........aa....aa........aa....aa.......',16,16);
-this.chars['player_right_0']=this.decode('.........1111...........111111........11333311........13333331........13333231........13333331.........333333...........3333............dddddd.........dddddddd........ddddd.dd.........dddd.3d.........dddddd..........dd..dd..........aa..aa..........aa..aa..',16,16);
-this.chars['player_right_1']=this.decode('.........1111...........111111........11333311........13333331........13333231........13333331.........333333...........3333............dddddd.........dddddddd........ddddddddd........dddddd3d........dddddd.........dd....dd........aa....aa........aa....aa.',16,16);
+this.chars['player_down_0']=this.decode('..1aCXCa1.........1aCCCCCa1........1Caa33aC1.......1a3Y33Y3a1......1a333333a1......1a33CC33a1........1aDDDDa..........1DDDD...........dddddddd........dddddddd........dddddddd........dddddddd........dddddddd.........dddddd..........aa..aa..........aa..aa',16,16);
+this.chars['player_down_1']=this.decode('..1aCXCa1.........1aCCCCCa1........1Caa33aC1.......1a3Y33Y3a1......1a333333a1......1a33CC33a1........1aDDDDa..........1DDDD...........dddddddd........dddddddd........dddddddd........dddddddd........dd....dd........aa....aa..........aa..aa',16,16);
+this.chars['player_down_2']=this.decode('..1aCXCa1.........1aCCCCCa1........1Caa33aC1.......1a3Y33Y3a1......1a333333a1......1a33CC33a1........1aDDDDa..........1DDDD...........dddddddd........dddddddd........dddddddd........dddddddd.........dddddd...........dd.dd..........aa..aa',16,16);
+this.chars['player_down_3']=this.decode('..1aCXCa1.........1aCCCCCa1........1Caa33aC1.......1a3Y33Y3a1......1a333333a1......1a33CC33a1........1aDDDDa..........1DDDD...........dddddddd........dddddddd........dddddddd........dddddddd........dd....dd........aa..aa...........aa..aa',16,16);
+this.chars['player_up_0']=this.decode('..1aCaCCa1........1aCCCCCCa1.......1aaaaaa3a1......1aaaaaaaBa1.....1aaaaaaaBa1.....1aaaaaaa1........1a1111a..........1DDDD...........dddddddd........dddddddd........dddddddd........dddddddd........dddddddd........dddddddd.........dddddd..........aa..aa..........aa..aa',16,16);
+this.chars['player_up_1']=this.decode('..1aCaCCa1........1aCCCCCCa1.......1aaaaaa3a1......1aaaaaaaBa1.....1aaaaaaaBa1.....1aaaaaaa1........1a1111a..........1DDDD...........dddddddd........dddddddd........dddddddd........dddddddd........dd....dd........aa....aa..........aa..aa..........aa..aa',16,16);
+this.chars['player_up_2']=this.decode('..1aCaCCa1........1aCCCCCCa1.......1aaaaaa3a1......1aaaaaaaBa1.....1aaaaaaaBa1.....1aaaaaaa1........1a1111a..........1DDDD...........dddddddd........dddddddd........dddddddd........dddddddd.........dddddd...........dd.dd..........aa..aa..........aa..aa',16,16);
+this.chars['player_up_3']=this.decode('..1aCaCCa1........1aCCCCCCa1.......1aaaaaa3a1......1aaaaaaaBa1.....1aaaaaaaBa1.....1aaaaaaa1........1a1111a..........1DDDD...........dddddddd........dddddddd........dddddddd........dddddddd........dd....dd........aa..aa...........aa..aa..........aa..aa',16,16);
+this.chars['player_left_0']=this.decode('.1111a...........1aCCC1...........1Ca33a1..........13Y33a1..........13333a1..........133CCa1...........1DDDD1...........1DDDD...........ddddddd........dddddddd........ddddddddb.......dddddddd3d......dddddddd........dddddddd.........dddddd..........aa..aa..........aa..aa',16,16);
+this.chars['player_left_1']=this.decode('.1111a...........1aCCC1...........1Ca33a1..........13Y33a1..........13333a1..........133CCa1...........1DDDD1...........1DDDD...........ddddddd........dddddddd........ddddddddb.......dddddddd3d......dddddddd........dddddddd........dd....dd........aa....aa........aa....aa',16,16);
+this.chars['player_left_2']=this.decode('.1111a...........1aCCC1...........1Ca33a1..........13Y33a1..........13333a1..........133CCa1...........1DDDD1...........1DDDD...........ddddddd........dddddddd........ddddddddb.......dddddddd3d......dddddddd........dddddddd.........dd.dd..........aa..aa..........aa..aa',16,16);
+this.chars['player_left_3']=this.decode('.1111a...........1aCCC1...........1Ca33a1..........13Y33a1..........13333a1..........133CCa1...........1DDDD1...........1DDDD...........ddddddd........dddddddd........ddddddddb.......dddddddd3d......dddddddd........dddddddd........dd....dd........aa..aa...........aa..aa',16,16);
+this.chars['player_right_0']=this.decode('.1111a...........1aCCC1...........1Ca33a1..........13Y33a1..........13333a1..........133CCa1...........1DDDD1...........1DDDD...........ddddddd........dddddddd........ddddddddb.......dddddddd3d......dddddddd........dddddddd.........dddddd..........aa..aa..........aa..aa',16,16);
+this.chars['player_right_1']=this.decode('.1111a...........1aCCC1...........1Ca33a1..........13Y33a1..........13333a1..........133CCa1...........1DDDD1...........1DDDD...........ddddddd........dddddddd........ddddddddb.......dddddddd3d......dddddddd........dddddddd........dd....dd........aa....aa........aa....aa',16,16);
+this.chars['player_right_2']=this.decode('.1111a...........1aCCC1...........1Ca33a1..........13Y33a1..........13333a1..........133CCa1...........1DDDD1...........1DDDD...........ddddddd........dddddddd........ddddddddb.......dddddddd3d......dddddddd........dddddddd.........dd.dd..........aa..aa..........aa..aa',16,16);
+this.chars['player_right_3']=this.decode('.1111a...........1aCCC1...........1Ca33a1..........13Y33a1..........13333a1..........133CCa1...........1DDDD1...........1DDDD...........ddddddd........dddddddd........ddddddddb.......dddddddd3d......dddddddd........dddddddd........dd....dd........aa..aa...........aa..aa',16,16);
 this.chars['npc_down_0']=this.decode('....cccc...........cccccc.........cc3333cc........c333333c........c323323c........c333333c.........333333...........3333...........gggggg.........gggggggg........gg.gg.gg........g3.g3.g3.........gggggg..........gg..gg..........aa..aa..........aa..aa.......',16,16);
 this.chars['npc_down_1']=this.decode('....cccc...........cccccc.........cc3333cc........c333333c........c323323c........c333333c.........333333...........3333...........gggggg.........gggggggg.......gg..gggg..g.....g3..gg..g3........gggggg.........gg....gg........aa....aa........aa....aa......',16,16);
 // === 怪物精灵 ===
-this.mons['slime_0']=this.decode('....................................888888.........88888888.......8888888888......8811881188.....888888888888....888888888888....8888888888888...8888888888888....888888888888....888888888888.....8888888888.......77777777....................................',16,16);
-this.mons['slime_1']=this.decode('....................................................888888.........88888888.......8811881188.....888888888888....888888888888....8888888888888...8888888888888....888888888888....888888888888.....8888888888.......77777777....................................',16,16);
-this.mons['wolf_0']=this.decode('.................55..........55.555.........555.5555.......5555.55115555551155...555555555555....555555555555.....5555555555......55511555.........5555555.........5555555........555555555.......555....555......55......55......44......44......44......44....',16,16);
-this.mons['wolf_1']=this.decode('.................55..........55.555.........555.5555.......5555.55115555551155...555555555555....555555555555.....5555555555......55511555.........5555555.........5555555........555555555......55........55....55........55....44........44....44........44...',16,16);
+this.mons['slime_0']=this.decode('.......9999........9777779.......97888879.......78f11f87.......781ff187........78f11f87........78888887........97878779.......97777779........97778779.......978777879......978888879......977888779......99788879.......99777799........99999999',16,16);
+this.mons['slime_1']=this.decode('....................................999999........97777779.......978888879......78f11f87.......781ff187........78f11f87........78888887........97878779.......97777779........97778779......997787799......997888799......99777799........99999999',16,16);
+this.mons['slime_2']=this.decode('......9999........977779........7788877........78f11f87.......781ff187........78f11f87........78888887........97878779.......97777779........97787779.......978877879......978887879.....9788888879.....978888879......99888899........9977779........999999',16,16);
+this.mons['slime_3']=this.decode('.....99999........97777779......97888879.......78111187.......78111187........78888887........97878779.......97777779........97778779.......978777879......978888879......977888779......99788879.......99777799........99999999',16,16);
+this.mons['wolf_0']=this.decode('...uu....uu........uaqua..........u1qua..........uaqqua.........uaqqua..........uaqua..........uaqua..........uaqqua.........uaqua..........uaqua..........uaqua..........uaqua..........uaqua...........uu............uu',16,16);
+this.mons['wolf_1']=this.decode('...uu....uu........uaqua..........u1qua..........uaqqua.........uaqqua..........uaqua..........uaqua..........uaqqua.........uaua..........uaau..........auua..........uaau..........uaua...........uu............uu',16,16);
+this.mons['wolf_2']=this.decode('...uu....uu........uaqua..........u1qua..........uaqqua.........uaqqua..........uaqua..........uaqua..........uaqqua.........uaqua..........uaqua..........uaqua..........uaqua..........uaqua...........uu............uu',16,16);
+this.mons['wolf_3']=this.decode('...uu....uu........uaqua..........u1qua..........uaqqua.........uaqqua..........uaqua..........uaqua..........uaqqua.........auau..........uaau..........uaua..........uaau..........auau...........uu............uu',16,16);
 this.mons['bat_0']=this.decode('.mm.........mm...mmm.......mmm...mmmm.....mmmm...mmmmm...mmmmm....mmmmm.mmmmm.....mm1mmmmm1mm......mmmmmmmmm........mmmmmmm..........mmmmm..........mmmmmmm........mmmmmmmmm......mmmmmmmmmmm.....mm.......mm....mm.........mm..................................',16,16);
 this.mons['bat_1']=this.decode('................................mm...........mm.mmm.........mmm.mmmm.......mmmm.mmmmm.....mmmmm..mm1mmmmm1mm......mmmmmmmmm........mmmmmmm..........mmmmm..........mmmmmmm........mmmmmmmmm......mmmmmmmmmmm.....mm.........mm..mm...........mm.................',16,16);
 this.mons['skeleton_0']=this.decode('....2222...........222222.........22222222........21222122........22222222........22211222.........222222...........2222...........222222.........22222222........22.22.22.........222222..........22..22..........22..22..........22..22..........55..55.......',16,16);
 this.mons['skeleton_1']=this.decode('....2222...........222222.........22222222........21222122........22222222........22211222.........222222...........2222...........222222.........22222222.......22..222..22.....22..22..22........222222.........22....22........55....55........55....55......',16,16);
-this.mons['butterfly_0']=this.decode('.................ll..........ll.llll........lllllllll......lllll.lllll....lllll...lllll..lllll.....llllllllll.......lll1llll.......llllllllll.....lllll..lllll...lllll....lllll.lllll......lllllllll........llll.ll..........ll.................................',16,16);
-this.mons['butterfly_1']=this.decode('................................ll............lllll..........lllllll........llll.llll......llll...llll....llll.....llllllllll.......lll1llll.......llllllllll.....llll....llll...llll......llll.llll........lllllll..........lllll............ll................',16,16);
+this.mons['butterfly_0']=this.decode('sks....sks........sksj..jks.......skjj..jks.......skjjj..jks......ssjj1jjs.......ssjjjjs........skjjjks........skjjjks........sks..sks',16,16);
+this.mons['butterfly_1']=this.decode('sksssssk........skjjjks........skjjjks........ssjj1jjs.......ssjjjjs........skjjjks........skjjjks........sks..sks',16,16);
+this.mons['butterfly_2']=this.decode('sks..sks........skjjjks........skjjjks........ssjjjjs........ssjj1jjs.......skjjjks........skjjjks........sks..sks',16,16);
+this.mons['butterfly_3']=this.decode('sks....sks........sksj..jks.......skjj..jks.......skjjj..jks......ssjj1jjs.......ssjjjjs........skjjjks........skjjjks........sks..sks',16,16);
 this.mons['boar_0']=this.decode('.................44..........44..444........444..44444444444444..44114444441144..44444444444444...44444244444.....44444444444.....44444444444.....444444444444....444444444444....444444444444.....44......44......44......44......aa......aa......aa......aa...',16,16);
 this.mons['boar_1']=this.decode('.................44..........44..444........444..44444444444444..44114444441144..44444444444444...44444244444.....44444444444.....44444444444.....444444444444....444444444444....444444444444....44........44....44........44....aa........aa....aa........aa..',16,16);
 this.mons['snake_0']=this.decode('...99.............9999............9199............9999.............9999.............9999.............9999.............9999.............9999.............9999.............9999.............9999.............999............9999..................................',16,16);
@@ -624,14 +1248,73 @@ this.mons['fire_bird_0']=this.decode('.....jj.............jjjj...........jjjjjj.
 this.mons['fire_bird_1']=this.decode('....jj.............jjjj...........jjjjjj.........jj11jjjj........jjjjjjjj.........jjjjjj...........jjjj...........jjjjjj.........jjjjjjjjj......jjjjjjjjjjj.....jjjjjjjjjjjj.....jjjjjjjjjjj......jjj.jjj.jj.....jj....jj...jj..jj.....jj....jj.................',16,16);
 this.mons['rock_golem_0']=this.decode('....pppp...........pppppp.........pppppppp........pp1pp1pp........pppppppp........pppppppp.........pppppp.........pppppppp.......pppppppppp......pppppppppp......pppppppppp......pppppppppp......ppp.pp.pp.......ppp.pp.pp.......ppp.pp.pp.......ppp.pp.pp......',16,16);
 this.mons['rock_golem_1']=this.decode('....pppp...........pppppp.........pppppppp........pp1pp1pp........pppppppp........pppppppp.........pppppp.........pppppppp.......pppppppppp......pppppppppp......pppppppppp......pppppppppp.......ppp..ppp........ppp..ppp........ppp..ppp........ppp..ppp......',16,16);
+this.mons['mslime_0']=this.decode('.....................................................11111..........1jjkkj1........1jkkkkkj1.......1jgghhhggj1......1gghkhkhgg1.....1gghhhhhhhgg1...1ghhhhhhhhhg1...1ghkhhhhhkhg1...1ghhhhhhhhhg1....1ghhhhhhhg1.....1ihhhhhhhi1.....1iiiiiiii1......1iiiiii1........1i11i1.....',16,16);
+this.mons['mslime_1']=this.decode('..............................................................11111..........1jjkkj1........1jkkkkkj1........1jgghhggj1......1gghkhkhgg1.....1ghhhhhhhg1.....1ghkhkhkhg1.....1ghhhhhhhg1......1ghhhhhg1......1ihhhhhhi1......1iiiiii1........1i11i1................',16,16);
+this.mons['ghost_0']=this.decode('.....................11111.........1fffff1........1f11fff11.......1ffffffff1.....1ffffffffff1...1ffffffffff1...1ffffffffff1...1ffffffffff1...1ffffffffff1...1ffffffffff1...1ffffffffff1...1f.fffff.f1.....1f..f..f1......1.....1................',16,16);
+this.mons['ghost_1']=this.decode('...........................................11111.........1fffff1........1f11fff11.......1ffffffff1.....1ffffffffff1...1ffffffffff1...1ffffffffff1...1ffffffffff1...1ffffffffff1...1ffffffffff1...1f.fffff.f1.....1f..f..f1......1.....1................',16,16);
+this.mons['fsprite_0']=this.decode('...........................11..........1kf1...........1kfkf1.........188f8881.....1888888881....1888888881....1888788881....1888888881....1888888881.....18888881......1888881........18.81..........1.1................',16,16);
+this.mons['fsprite_1']=this.decode('...............................................11..........1kf1...........1kfkf1.........188f8881.....1888888881....1888888881....1888788881....1888888881.....18888881......1888881........18.81..........1.1................',16,16);
+this.mons['dknight_0']=this.decode('.....................11111..........1444441..........1444441..........14g44g41..........1444441...........14441..........g15555551g.....g1555555551g...g1555555551g....1555555551....1555555551....1555555551....155.55.551......15..5..51.......1..1..1................',16,16);
+this.mons['dknight_1']=this.decode('.....................11111..........1444441..........1444441..........14g44g41..........1444441...........14441..........g15555551g.....g1555555551g...g1555555551g....1555555551....1555555551....1555555551....155..5..51......15.....51.......1.....1................',16,16);
+this.mons['necro_0']=this.decode('..1..................m1................mm1...............m1...............m1111...........1nnnn1..........1ngng1..........1nnnn1...........1nn1............1nnnnn1.........1nnnnnnn1........1nnnnnnn1........1nnnnnnn1........1nnn.nnn1..........1nn.nn1............1...1......',16,16);
+this.mons['necro_1']=this.decode('..................1..................m1................mm1...............m1...............m1111...........1nnnn1..........1ngng1..........1nnnn1...........1nn1..........1nnnnnnn1........1nnnnnnn1........1nnnnnnn1........1nnn.nnn1...........1n...n1............1...1......',16,16);
+this.mons['sslime_0']=this.decode('....................................................11111..........1yyyyy1........1yyyyyyy1.......1y7a7a7a7y1......1yyyyyyyyy1.....1yyyyyyyyyyy1...1yyyyyyyyyyy1...1y7yyyyyy7yy1...1yyyyyyyyyyy1....1yyyyyyyyy1.....19yyyyyyy91......1999999991........1999991..........19991......',16,16);
+this.mons['sslime_1']=this.decode('..............................................................11111..........1yyyyy1........1yyyyyyy1.......1y7a7a7a7y1......1yyyyyyyyy1.....1yyyyyyyyyyy1...1y7yyyyyy7yy1...1yyyyyyyyyyy1....1yyyyyyyyy1......19yyyyyyy91........1999991..........19991................',16,16);
+this.mons['scroc_0']=this.decode('................................11................18811111...........1888888811.........18188888881......188888888881....1888888888881...1888888888881....188888888881....18888888881.....1888888881......188.88.81........18..8.81..........1...1...............',16,16);
+this.mons['scroc_1']=this.decode('................................11................18811111...........1888888811.........18188888881......188888888881....1888888888881...1888888888881....188888888881....18888888881.....1888888881......188.88.81........18...8.81...........1....1............',16,16);
+this.mons['psprite_0']=this.decode('......................11.............1nnn1...........1nnnnn1..........1ngngn1..........1nnnnn1.........1nnnnnnn1........1nnnnnnn1........1nnnmnnn1........1nnnnnnn1........1nnnnnnn1..........1nnnnn1..........1nn.nn1...........1n.n1.............1.1................',16,16);
+this.mons['psprite_1']=this.decode('.........................................11.............1nnn1...........1nnnnn1..........1ngngn1..........1nnnnn1.........1nnnnnnn1........1nnnmnnn1........1nnnnnnn1..........1nnnnn1..........1nn.nn1...........1n.n1.............1.1................',16,16);
+this.mons['gargoyle_0']=this.decode('.....................11111..........1666661..........1616661..........1666661......5.166666661.55..5516666666155....5.1666661.5......166666661......166666661......166666661......166.66661........16..6.61..........1..1..1................................',16,16);
+this.mons['gargoyle_1']=this.decode('.....................11111..........1666661..........1616661..........1666661.......516666666155..5516666666155....5.1666661.5......166666661......166666661......166666661......166.66661........16...6.61.........1....1.1................................',16,16);
+this.mons['awarrior_0']=this.decode('.....................11111..........1BBBBB1..........1BBBBB1..........1B1BB1B1..........1BBBBB1...........1BBB1..........1aaaaaa1........1aaaaaaaa1.......1aaaaaaaa1.......1aaaaaaaa1.......1aaaaaaaa1.......1aaaaaaaa1.......1aa.aa.aa1.........1a..a..a1..........1..1..1....',16,16);
+this.mons['awarrior_1']=this.decode('.....................11111..........1BBBBB1..........1BBBBB1..........1B1BB1B1..........1BBBBB1...........1BBB1........1aaaaaaaa1.......1aaaaaaaa1.......1aaaaaaaa1.......1aaaaaaaa1.......1aaaaaaaa1.......1aaaaaaaa1.......1aa.aa.aa1.........1a..a..a1..........1.....1.....',16,16);
+this.mons['statue_0']=this.decode('.....................11111..........1666661..........1666661..........1616661..........1666661...........16661..........1666661........166666661.......166666661.......166666661.......166666661.......166666661.......166.66.661.........16..6..61..........1..1..1....',16,16);
+this.mons['statue_1']=this.decode('.....................11111..........1666661..........1666661..........1616661..........1666661...........16661..........1666661........166666661.......166666661.......166666661.......166666661.......166666661.......166..6..61.........16.....61..........1.....1....',16,16);
+this.mons['dkin_0']=this.decode('.....................11111..........1ggggg1..........1ggggg1..........1g1gg1g1..........1ggggg1...........1ggg1..........1hhhhhh1........1hhhhhhhh1.......1hhhhhhhh1.......1hhhhhhhh1.......1hhhhhhhh1.......1hhhhhhhh1.......1hh.hh.hh1.........1h..h..h1..........1..1..1....',16,16);
+this.mons['dkin_1']=this.decode('.....................11111..........1ggggg1..........1ggggg1..........1g1gg1g1..........1ggggg1...........1ggg1..........1hhhhhh1........1hhhhhhhh1.......1hhhhhhhh1.......1hhhhhhhh1.......1hhhhhhhh1.......1hh.hh.hh1.........1h..h..h1..........1.....1................',16,16);
+this.mons['dknight_d_0']=this.decode('.....................11111..........1ggggg1..........1444441..........14g44g41..........1444441...........14441........g15555551g.....g1555555551g...g1555555551g...j1555555551j...j1555555551j....1555555551....155.55.551......15..5..51.......1..1..1....',16,16);
+this.mons['dknight_d_1']=this.decode('.....................11111..........1ggggg1..........1444441..........14g44g41..........1444441...........14441........g15555551g.....g1555555551g...g1555555551g...j1555555551j...j1555555551j....1555555551....155..5..51......15.....51.......1.....1....',16,16);
+this.mons['fwyrm_0']=this.decode('..................11..............1gg1.............1g1g1............1ggg111..........1ggggg11..........1gggggg11.......1gggggggg1........1ggggggg1........1ggggggg1.........1ggggg1.........1gg.gg1...........1g.g1.............1.1................',16,16);
+this.mons['fwyrm_1']=this.decode('....................................11..............1gg1.............1g1g1............1ggg111..........1ggggg11..........1gggggg11.......1gggggggg1........1ggggggg1........1ggggggg1.........1ggggg1.........1gg.gg1...........1g.g1.............1.1................',16,16);
 // === Boss精灵 (32x32) ===
 this.decodeBoss=(hex)=>{let cv=document.createElement('canvas');cv.width=32;cv.height=32;let c=cv.getContext('2d');let img=c.createImageData(32,32);for(let i=0;i<hex.length;i++){let ch=hex[i];if(ch==='.'){img.data[i*4+3]=0;continue}let col=this.palette[ch];if(!col){img.data[i*4]=255;img.data[i*4+1]=0;img.data[i*4+2]=255;img.data[i*4+3]=255;continue}let r=parseInt(col.substr(1,2),16),g=parseInt(col.substr(3,2),16),b=parseInt(col.substr(5,2),16);img.data[i*4]=r;img.data[i*4+1]=g;img.data[i*4+2]=b;img.data[i*4+3]=255}c.putImageData(img,0,0);return cv}
+this.boss['boar_k_0']=this.decodeBoss('........................................................................kkkkkk..................kkkkkkkk.................kkkkkk...........................................1111111111................1aaaaaaaaaa1...............1aaaaaaaaaaaa1..............1aaaa11aaaaaaa1..............1aa11111aaaaaa1..............1aaaaaaaaaaaaaa1...............1aaaaaaaaaaaa1................1aaaaaaaaaa1.............111.1aaaaaaaa1.111...........1cc1..1aaaaaa1..1cc1..........1cc1...1aaaaaa1...1cc1.........1c1....1aaaaaa1....1c1...........1.....1aaaaaa1.....1................1aaaaaaaaaa1...............1aaaaaaaaaaaa1..............1aaaaaaaaaaaa1..............1aaaaaaaaaaaa1..............1aaaaaaaaaaaa1..............1aaaaaaaaaaaa1...............1aaa.aaaa.aaa1................1aa..aa..aa1.................1a..aa..aa1...................1..aa..1....................1..11..1..............................................................');
+this.boss['boar_k_1']=this.decodeBoss('........................................................................kkkkkk..................kkkkkkkk.................kkkkkk...........................................1111111111................1aaaaaaaaaa1...............1aaaaaaaaaaaa1..............1aaaa11aaaaaaa1..............1aa11111aaaaaa1..............1aaaaaaaaaaaaaa1...............1aaaaaaaaaaaa1................1aaaaaaaaaa1.............111.1aaaaaaaa1.111...........1cc1..1aaaaaa1..1cc1..........1cc1...1aaaaaa1...1cc1.........1c1....1aaaaaa1....1c1...........1.....1aaaaaa1.....1................1aaaaaaaaaa1...............1aaaaaaaaaaaa1..............1aaaaaaaaaaaa1..............1aaaaaaaaaaaa1..............1aaaaaaaaaaaa1...............1aaa.aaaa.aaa1................1aa..aa..aa1.................1a..aa..aa1...................1..aa..1....................1..11..1.......................1....1................................................');
+this.boss['wolf_k_0']=this.decodeBoss('........................................................................kkkkkk..................kkkkkkkk.................kkkkkk...........................................1..11..1..................155.11.551................15555555551...............1555511555551...............1551111555551..............155555555555551..............155555555555551.............15555555555555551.............15555555555555551.............15555555555555551.............15555555555555551..............155555555555551..............155555555555551...............1555555555551...............1555555555551................1555555551................155.55.551.................15..5..51..................15..5..51...................1..5..1....................1..1..1......................................................................................................');
+this.boss['wolf_k_1']=this.decodeBoss('........................................................................kkkkkk..................kkkkkkkk.................kkkkkk...........................................1..11..1..................155.11.551................15555555551...............1555511555551...............1551111555551..............155555555555551..............155555555555551.............15555555555555551.............15555555555555551.............15555555555555551.............15555555555555551..............155555555555551..............155555555555551...............1555555555551...............1555555555551................1555555551................155.55.551.................15..5..51..................15.....51...................1.....1....................................................................................................................');
+this.boss['fire_d_0']=this.decodeBoss('..................................j...................j..........jj.................jj.........jjj...............jjj...........jjjj...........jjjj..........jjjjjjj.......jjjjj...........jjjjjjjjjjjjjjj............jjjjjjjjjjjjj.............jjjjjjjjjjjjj..............jjj11jjjj1jjj.............jj1111jj111jjj............jjjjjjjjjjjjjjjj...........jjjjjjjjjjjjjjjj...........jjjjjjjjjjjjjjjj............jjjjjjjjjjjjjjj............jjjjjjjjjjjjjjj.............jjjjjjjjjjjjj..............jjjjjjjjjjj...............jjjjjjjjj................jjjjjjj.................jjjjj..................jjj..............................................................');
+this.boss['fire_d_1']=this.decodeBoss('..................................j...................j..........jj.................jj.........jjj...............jjj...........jjjj...........jjjj..........jjjjjjj.......jjjjj...........jjjjjjjjjjjjjjj............jjjjjjjjjjjjj.............jjjjjjjjjjjjj..............jjj11jjjj1jjj............jj11111jj1111jjj............jjjjjjjjjjjjjjjj...........jjjjjjjjjjjjjjjj...........jjjjjjjjjjjjjjjj............jjjjjjjjjjjjjjj............jjjjjjjjjjjjjjj.............jjjjjjjjjjjjj..............jjjjjjjjjjj...............jjjjjjjjj................jjjjjjj.................jjjjj..................jjj..............................................................');
+this.decodeBoss('..................................1...................1..........11.................1g1........1gg1...............1gg1...........1ggg1...........1ggg1..........1ggggg1.......1ggg1...........1ggggggggggggg1............1ggggggggggg1.............1ggggggggggg1..............1gg11gggg1gg1.............1g1111gg111gg1............1gggggggggggggg1...........1gggggggggggggg1...........1gggggggggggggg1............1ggggggggggggg1............1ggggggggggggg1.............1ggggggggggg1..............1ggggggggg1...............1ggggggg1................1ggggg1.................1ggg1..................1g1..............................................................');
+this.decodeBoss('..................................1...................1..........11.................1g1........1gg1...............1gg1...........1ggg1...........1ggg1..........1ggggg1.......1ggg1...........1ggggggggggggg1............1ggggggggggg1.............1ggggggggggg1..............1gg11gggg1gg1............1g11111gg1111gg1............1gggggggggggggg1...........1gggggggggggggg1...........1gggggggggggggg1............1ggggggggggggg1............1ggggggggggggg1.............1ggggggggggg1..............1ggggggggg1...............1ggggggg1................1ggggg1.................1ggg1..................1g1..............................................................');
+this.boss['demon_k_0']=this.decodeBoss('................................................................................kkkkkk..................kkkkkkkk.................kkkkkk.............................................n.........n..................nn.......nn..................nnn.....nnn..................nnnnnnnnn...............nnnnnnnnnnn..............nnn11nnnn1nnn..............nn1111nn111nnn.............nnnnnnnnnnnnnnn.............nnnnnnnnnnnnnnn.............nnnnnnnnnnnnnnn..............nnnnnnnnnnnnn...............nnnnnnnnnnn................nnnnnnnnn.................nnnnnnn..................nnnnn....................nnn......................n..............................................................................................');
+this.boss['demon_k_1']=this.decodeBoss('................................................................................kkkkkk..................kkkkkkkk.................kkkkkk.............................................n.........n..................nn.......nn..................nnn.....nnn..................nnnnnnnnn...............nnnnnnnnnnn..............nnn11nnnn1nnn..............nn1111nn111nnn.............nnnnnnnnnnnnnnn.............nnnnnnnnnnnnnnn.............nnnnnnnnnnnnnnn..............nnnnnnnnnnnnn...............nnnnnnnnnnn................nnnnnnnnn.................nnnnnnn..................nnnnn....................nnn...................................................n..n....................................................................................');
+this.boss['swamp_k_0']=this.decodeBoss('..................................11...............................18811111...........................1888888811.........................18188888881.......................18888888881.......................188888888881......................1888888888881.....................1888888888881.....................1888888888881.....................188888888881......................18888888881.......................1888888881........................18888881.........................1888881..........................18881...........................1881............................181.............................11...............................................................................................................................');
+this.boss['swamp_k_1']=this.decodeBoss('..................................11...............................18811111...........................1888888811.........................18188888881.......................18888888881.......................188888888881......................1888888888881.....................1888888888881.....................1888888888881.....................188888888881......................18888888881.......................1888888881........................18888881.........................1888881..........................18881.............................................181.............................11...............................................................................................................................');
+this.boss['golem_0']=this.decodeBoss('.....................................................................................111111..................16666661................1666666661...............1616666661...............1666666661................16666661.................166666661...............16666666661..............16666666661..............16666666661..............16666666661..............16666666661.................166666661.................166666661..................166.661...................16.61....................1..1.................................................................');
+this.boss['golem_1']=this.decodeBoss('.....................................................................................111111..................16666661................1666666661...............1616666661...............1666666661................16666661.................166666661...............16666666661..............16666666661..............16666666661..............16666666661..............16666666661.................166666661.................166..661..................166.661...................16.61....................1..1.................................................................');
+this.boss['dragon_0']=this.decodeBoss('..................................g................................ggg...............................ggggg.............................gggggg...........................ggggggg............................ggggggg...........................ggggggggg.........................gg11gggggg.........................g1111ggggggg.......................ggggggggggggggg......................gggggggggggggggg................ggggggggggggggggg................ggggggggggggggggg..................ggggggggggggggg....................ggggggggggggg......................ggggggggggg........................ggggggg............................ggggg..............................ggg................................g......................................................................................................');
+this.boss['dragon_1']=this.decodeBoss('..................................g................................ggg...............................ggggg.............................gggggg...........................ggggggg............................ggggggg...........................ggggggggg.........................gg11gggggg.........................g1111ggggggg.......................ggggggggggggggg......................gggggggggggggggg................ggggggggggggggggg................ggggggggggggggggg..................ggggggggggggggg....................ggggggggggggg......................ggggggggggg........................ggggggg............................ggggg..............................ggg..............................................................................................................');
+this.boss['dev_0']=this.decodeBoss('.....................................................................................111111..................13333331................1333333331...............1323333231...............1333333331................13333331.................133331..................1ddddddd1...............1ddddddddd1..............1ddddddddd1..............1ddddddddd1..............1ddddddddd1...............1ddddddd1.................1ddddd1...................1ddd1.....................1d1...............................................................................................................................');
+this.boss['dev_1']=this.decodeBoss('.....................................................................................111111..................13333331................1333333331...............1323333231...............1333333331................13333331.................133331..................1ddddddd1...............1ddddddddd1..............1ddddddddd1..............1ddddddddd1..............1ddddddddd1...............1ddddddd1.................1ddddd1...................1ddd1.....................................................1111111111................155555555551...............155555555551................1111111111.........................................................................................................');
 this.getChar=(name,frame)=>{let k=name+'_'+frame;return this.chars[k]||null}
-this.getMon=(name,frame)=>{let k=name+'_'+frame;return this.mons[k]||null}
+this.getMon=(name,frame)=>{let k=name+'_'+frame;return this.mons[k]||this.mons[name+'_'+(frame%2)]||null}
 }
 
 makeFrames(arr){
 return arr.map(hex=>this.decode(hex,16,16))
+}
+
+// Get grass tile from cache (32x32 seamless)
+getGrass32(x,y,animFrame){
+if(!this.grassCache||!this.grassCache.sprites.length)return null;
+var v=(x*7+y*13)%4;var f=(x*3+y*7)%120;
+return this.grassCache.sprites[v]?this.grassCache.sprites[v][f]:null
+}
+
+// Get wavy edge sprite for grass-path transitions
+getWavyEdge(dir,animFrame){
+if(!this.grassCache||!this.grassCache.edgeSprites[dir])return null;
+var f=0;return this.grassCache.edgeSprites[dir][f]||null
 }
 
 getTile(type,animFrame){
@@ -639,8 +1322,25 @@ let frames;
 switch(type){
 case 0:frames=this.tiles.grass;break;case 1:frames=this.tiles.tree;break;
 case 2:frames=this.tiles.water;break;case 3:frames=this.tiles.path;break;
-case 6:frames=this.tiles.tall_grass;break;case 10:frames=this.tiles.mountain;break;
+case 6:frames=this.tiles.tall_grass;break;case 7:frames=this.tiles.flower;break;
+case 8:frames=this.tiles.bridge;break;case 10:frames=this.tiles.mountain;break;
 case 11:frames=this.tiles.lava;break;case 12:frames=this.tiles.swamp;break;
+case 30:frames=this.tiles.roof_tl;break;case 31:frames=this.tiles.roof_tm;break;
+case 32:frames=this.tiles.roof_tr;break;case 33:frames=this.tiles.roof_bl;break;
+case 34:frames=this.tiles.roof_bm;break;case 35:frames=this.tiles.roof_br;break;
+case 36:frames=this.tiles.wall_win;break;case 37:frames=this.tiles.wall_plain;break;
+case 38:frames=this.tiles.wall_lcor;break;case 39:frames=this.tiles.wall_rcor;break;
+case 40:frames=this.tiles.door_top;break;case 41:frames=this.tiles.door_bot;break;
+case 42:frames=this.tiles.found_l;break;case 43:frames=this.tiles.found_m;break;
+case 44:frames=this.tiles.found_r;break;case 45:frames=this.tiles.step;break;
+case 46:frames=this.tiles.building_shadow;break;
+// 新增Coromon风格图块
+case 50:frames=this.tiles.rock;break;
+case 51:frames=this.tiles.fence;break;
+case 52:frames=this.tiles.hedge;break;
+case 53:frames=this.tiles.lantern;break;
+case 54:frames=this.tiles.bench;break;
+case 55:frames=this.tiles.statue_deco;break;
 default:return null}
 if(!frames||!frames.length)return null;
 return frames[animFrame%frames.length]
@@ -657,11 +1357,24 @@ this.cv=document.getElementById(id);this.ctx=this.cv.getContext('2d');
 this.af=0;this.at=0;this.gt=480;this.ts=0.01;
 this.weather='clear';this.wt=0;this.rd=[];
 // 像素缓存
-this.tileCache={}
+this.tileCache={};
+// Coromon风格双层渲染系统
+this.groundCv=document.createElement('canvas');
+this.groundCv.width=1280;this.groundCv.height=768;
+this.groundCtx=this.groundCv.getContext('2d');
+this.objCv=document.createElement('canvas');
+this.objCv.width=1280;this.objCv.height=768;
+this.objCtx=this.objCv.getContext('2d');
+this._ctxStack=[]
 }
 clear(){this.ctx.clearRect(0,0,this.cv.width,this.cv.height)}
+clearLayers(){this.groundCtx.clearRect(0,0,1280,768);this.objCtx.clearRect(0,0,1280,768)}
+pushTarget(ctx){this._ctxStack.push(this.ctx);this.ctx=ctx}
+popTarget(){if(this._ctxStack.length>0)this.ctx=this._ctxStack.pop()}
+isGroundTile(t){return[CFG.T.GRASS,CFG.T.WATER,CFG.T.PATH,CFG.T.TGRASS,CFG.T.FLOWER,CFG.T.MTN,CFG.T.LAVA,CFG.T.SWAMP,CFG.T.FLOOR,CFG.T.BRIDGE,CFG.T.ROCK,CFG.T.HEDGE,CFG.T.LANTERN,CFG.T.BENCH,CFG.T.STATUE_D].includes(t)}
+composite(){this.ctx.drawImage(this.groundCv,0,0);this.ctx.drawImage(this.objCv,0,0)}
 update(){
-this.at++;if(this.at>=8){this.af=(this.af+1)%120;this.at=0}
+this.at++;if(this.at>=90){this.af=(this.af+1)%120;this.at=0}
 this.gt=(this.gt+this.ts)%1440;
 this.wt--;
 if(this.wt<=0){let r=Math.random();this.weather=r<0.6?'clear':r<0.75?'rain':r<0.9?'snow':'fog';this.wt=18000+Math.random()*18000;
@@ -678,27 +1391,33 @@ let c=this.ctx,f=this.af;
 
 switch(t){
 case CFG.T.GRASS:
-// 像素精灵草地
-let grassSpr=sprites.getTile(0,this.af);
-if(grassSpr){c.drawImage(grassSpr,s,sy,64,64)}
+// 32x32 seamless grass from cache
+let grassSpr32=sprites.getGrass32(x,y,f);
+if(grassSpr32){c.drawImage(grassSpr32,s,sy,64,64)}
 else{px(c,s,sy,64,64,'#6ab04c')}
-// 叠加草地随机纹理（让每格不同）
-for(let i=0;i<6;i++){
-let gx=s+((x*17+i*11+3)%56),gy=sy+((y*13+i*7+5)%56);
-c.fillStyle=['#5a9e3c','#7bc85c','#4a8e2c'][i%3];
-c.fillRect(gx,gy,3+(i%2),2+(i%2))}
-// 偶尔小花
-if((x*7+y*13)%17===0){px(c,s+28,sy+28,3,3,'#fff');px(c,s+29,sy+26,2,2,'#ffeb3b')}
-if((x*11+y*7)%23===0){px(c,s+16,sy+40,3,3,'#fff');px(c,s+17,sy+38,2,2,'#ff7043')}
 break;
 
 case CFG.T.TREE:
+// Tree fallback - normally drawn by drawTreeLarge, but this is for sprite-based rendering
 let treeSpr=sprites.getTile(1,this.af);
 if(treeSpr){c.drawImage(treeSpr,s,sy,64,64)}
-else{px(c,s,sy,64,64,'#2d5a27')}
+else{
+// Coromon风格树冠 - 多层圆形叠加
+c.fillStyle='#1a5a1a';
+c.beginPath();c.arc(s+32,sy+24,24,0,Math.PI*2);c.fill();
+c.fillStyle='#2a7a2a';
+c.beginPath();c.arc(s+28,sy+20,18,0,Math.PI*2);c.fill();
+c.fillStyle='#3a9a3a';
+c.beginPath();c.arc(s+26,sy+16,14,0,Math.PI*2);c.fill();
+c.fillStyle='#4aaa4a';
+c.beginPath();c.arc(s+24,sy+12,10,0,Math.PI*2);c.fill();
+// 树干
+px(c,s+28,sy+40,8,20,'#5d3a1a');
+px(c,s+30,sy+42,4,16,'#7a5230');
+}
 // 地面阴影
-c.fillStyle='rgba(0,0,0,0.12)';
-c.beginPath();c.ellipse(s+32,sy+62,16,4,0,0,Math.PI*2);c.fill();
+c.fillStyle='rgba(0,0,0,0.15)';
+c.beginPath();c.ellipse(s+32,sy+62,18,5,0,0,Math.PI*2);c.fill();
 break;
 
 case CFG.T.WATER:
@@ -767,10 +1486,14 @@ else{px(c,s,sy,64,64,'#5cb85c')}
 break;
 
 case CFG.T.FLOWER:
+// Coromon风格花朵 - 使用精灵
+let flowerSpr=sprites.getTile(7,this.af);
+if(flowerSpr){c.drawImage(flowerSpr,s,sy,64,64)}
+else{
 px(c,s,sy,64,64,'#5cb85c');
 let fc=['#ff69b4','#ff1493','#ffd700','#ff6347'][(x+y)%4];
 px(c,s+24,sy+24,16,16,fc);
-px(c,s+28,sy+28,8,8,'#fff');
+px(c,s+28,sy+28,8,8,'#fff')}
 break;
 
 case CFG.T.MOUNTAIN:
@@ -791,6 +1514,59 @@ let swampSpr=sprites.getTile(12,this.af);
 if(swampSpr){c.drawImage(swampSpr,s,sy,64,64)}
 else{px(c,s,sy,64,64,'#4a6b3a')}
 break;
+
+// === Coromon风格新增图块 ===
+case CFG.T.BRIDGE:
+let bridgeSpr=sprites.getTile(8,this.af);
+if(bridgeSpr){c.drawImage(bridgeSpr,s,sy,64,64)}
+else{px(c,s,sy,64,64,'#8B7355')}
+break;
+
+case CFG.T.ROCK:
+let rockSpr=sprites.getTile(50,this.af);
+if(rockSpr){c.drawImage(rockSpr,s,sy,64,64)}
+else{px(c,s,sy,64,64,'#808080')}
+break;
+
+case CFG.T.FENCE:
+let fenceSpr=sprites.getTile(51,this.af);
+if(fenceSpr){c.drawImage(fenceSpr,s,sy,64,64)}
+else{px(c,s,sy,64,64,'#808080')}
+break;
+
+case CFG.T.HEDGE:
+let hedgeSpr=sprites.getTile(52,this.af);
+if(hedgeSpr){c.drawImage(hedgeSpr,s,sy,64,64)}
+else{px(c,s,sy,64,64,'#154c2f')}
+break;
+
+case CFG.T.LANTERN:
+let lpSpr=sprites.getTile(53,this.af);
+if(lpSpr){c.drawImage(lpSpr,s,sy,64,64)}
+else{px(c,s+28,sy+20,8,44,'#6d4c2a');
+let lf=this.af%4<2;c.fillStyle=lf?'#ff8c00':'#ffd700';
+c.beginPath();c.arc(s+32,sy+14,10,0,Math.PI*2);c.fill();
+c.fillStyle='rgba(255,200,0,0.15)';c.beginPath();c.arc(s+32,sy+14,20,0,Math.PI*2);c.fill()}
+break;
+
+// === Coromon风格建筑图块渲染 ===
+case CFG.T.ROOF_TL:case CFG.T.ROOF_TM:case CFG.T.ROOF_TR:
+case CFG.T.ROOF_BL:case CFG.T.ROOF_BM:case CFG.T.ROOF_BR:
+case CFG.T.WALL_WIN:case CFG.T.WALL_PLAIN:
+case CFG.T.WALL_LCOR:case CFG.T.WALL_RCOR:
+case CFG.T.DOOR_TOP:case CFG.T.DOOR_BOT:
+case CFG.T.FOUND_L:case CFG.T.FOUND_M:case CFG.T.FOUND_R:
+case CFG.T.STEP:case CFG.T.SHADOW:{
+let tileType=t-30;let buildingSpr=sprites.getTile(t,this.af);
+if(buildingSpr){c.drawImage(buildingSpr,s,sy,64,64)}
+else{
+// 回退渲染
+let bgColor='#f5e6d0';
+if(t>=30&&t<=35)bgColor='#e74c3c';
+else if(t>=42&&t<=45)bgColor='#808080';
+else if(t===46)bgColor='rgba(0,0,0,0.15)';
+px(c,s,sy,64,64,bgColor)}
+break;}
 
 case CFG.T.CHEST:
 px(c,s,sy,64,64,'#5cb85c');
@@ -955,7 +1731,7 @@ break;
 drawChar(x,y,dir,type,cx,cy,moving){
 let s=(x-cx)*CFG.TS,sy=(y-cy)*CFG.TS;
 if(s<-64||s>this.cv.width+64||sy<-64||sy>this.cv.height+64)return;
-let c=this.ctx,frame=moving?(this.af%20<10?1:0):0;
+let c=this.ctx,frame=moving?Math.floor(this.af/5)%4:0;
 let spriteName=(type==='player'?'player':'npc')+'_'+dir+'_'+frame;
 if(type!=='player')spriteName='npc_down_'+frame;
 let spr=sprites.getChar(type==='player'?'player_'+dir:'npc_down',frame);
@@ -999,6 +1775,89 @@ else if(dir==='left'){px(c,s+24,sy+18+b,4,4,'#fff');px(c,s+24,sy+19+b,2,2,'#333'
 else{px(c,s+36,sy+18+b,4,4,'#fff');px(c,s+37,sy+19+b,2,2,'#333')}
 if(dir==='down')px(c,s+30,sy+24+b,4,2,'#e57373');
 }}
+}
+
+// Coromon风格大树渲染 - 不受格子边界限制，更大更亮
+drawTreeLarge(x,y,cx,cy){
+let s=(x-cx)*CFG.TS,sy=(y-cy)*CFG.TS;
+if(s<-96||s>1280+64||sy<-120||sy>768+48)return;
+let c=this.ctx;
+// 地面阴影（更大的椭圆）
+c.fillStyle='rgba(0,0,0,0.2)';
+c.beginPath();c.ellipse(s+32,sy+62,36,14,0,0,Math.PI*2);c.fill();
+// 树干 - 更粗壮，有纹理
+px(c,s+24,sy+28,16,38,'#5d3a1a');
+px(c,s+26,sy+30,12,34,'#7a5230');
+px(c,s+27,sy+34,4,10,'#4a2a10');
+px(c,s+33,sy+40,4,8,'#4a2a10');
+// 树干纹理细节
+px(c,s+28,sy+36,2,6,'#6b4a2a');
+px(c,s+34,sy+44,2,4,'#6b4a2a');
+px(c,s+30,sy+42,2,4,'#8b6a4a');
+// 树冠 - Coromon风格多层椭圆叠加，从暗到亮
+// 底层阴影（最暗）
+c.fillStyle='#1a5a1a';
+c.beginPath();c.ellipse(s+34,sy+12,52,42,0,0,Math.PI*2);c.fill();
+// 中层暗色
+c.fillStyle='#2a7a2a';
+c.beginPath();c.ellipse(s+32,sy+8,48,38,0,0,Math.PI*2);c.fill();
+// 中间层
+c.fillStyle='#3a9a3a';
+c.beginPath();c.ellipse(s+28,sy+4,40,32,-0.1,0,Math.PI*2);c.fill();
+// 中亮层
+c.fillStyle='#4aaa4a';
+c.beginPath();c.ellipse(s+26,sy,34,26,-0.15,0,Math.PI*2);c.fill();
+// 亮层（受光面）
+c.fillStyle='#5aba5a';
+c.beginPath();c.ellipse(s+24,sy-6,28,22,-0.2,0,Math.PI*2);c.fill();
+// 高光层
+c.fillStyle='#6aca6a';
+c.beginPath();c.ellipse(s+22,sy-12,20,16,-0.2,0,Math.PI*2);c.fill();
+c.fillStyle='#7ada7a';
+c.beginPath();c.ellipse(s+20,sy-16,14,10,-0.2,0,Math.PI*2);c.fill();
+// 右侧暗部补充
+c.fillStyle='#2a7a2a';
+c.beginPath();c.ellipse(s+44,sy+6,24,20,0.2,0,Math.PI*2);c.fill();
+c.fillStyle='#3a9a3a';
+c.beginPath();c.ellipse(s+42,sy+2,18,14,0.15,0,Math.PI*2);c.fill();
+// 最高光点缀
+c.fillStyle='#8aea8a';
+c.beginPath();c.ellipse(s+20,sy-14,6,4,-0.3,0,Math.PI*2);c.fill();
+c.fillStyle='#9afa9a';
+c.beginPath();c.ellipse(s+24,sy-18,4,3,-0.2,0,Math.PI*2);c.fill();
+// 叶片细节点缀
+c.fillStyle='#4a9a4a';
+c.beginPath();c.ellipse(s+38,sy-8,6,4,0.3,0,Math.PI*2);c.fill();
+c.fillStyle='#5aba5a';
+c.beginPath();c.ellipse(s+30,sy-10,5,3,0,0,Math.PI*2);c.fill();
+}
+
+// Autotile边缘过渡系统
+drawAutotile(x,y,t,cx,cy,mapMgr){
+let s=(x-cx)*CFG.TS,sy=(y-cy)*CFG.TS;
+if(s<-CFG.TS||s>1280||sy<-CFG.TS||sy>768)return;
+let c=this.ctx,TS=CFG.TS;
+let up=mapMgr.getTile(x,y-1),dn=mapMgr.getTile(x,y+1);
+let lt=mapMgr.getTile(x-1,y),rt=mapMgr.getTile(x+1,y);
+let isW=(tt)=>tt===CFG.T.WATER||tt===CFG.T.LAVA||tt===CFG.T.SWAMP;
+let isG=(tt)=>tt===CFG.T.GRASS||tt===CFG.T.TGRASS||tt===CFG.T.FLOWER;
+let isP=(tt)=>tt===CFG.T.PATH||tt===CFG.T.BRIDGE;
+// 草地-水面边缘：草叶悬垂效果
+if(isG(t)){
+if(isW(up)){for(let i=0;i<8;i++){let gx=s+i*8+1,gh=4+((x*3+i*7)%4);c.fillStyle='#5cb85c';c.fillRect(gx,sy,3,gh);c.fillStyle='#4aa04a';c.fillRect(gx+1,sy,1,gh-1)}}
+if(isW(dn)){for(let i=0;i<8;i++){let gx=s+i*8+1,gh=4+((x*5+i*3)%4);c.fillStyle='#5cb85c';c.fillRect(gx,sy+TS-gh,3,gh)}}
+if(isW(lt)){for(let i=0;i<8;i++){let gy=sy+i*8+1,gw=4+((y*3+i*7)%4);c.fillStyle='#5cb85c';c.fillRect(s,gy,gw,3)}}
+if(isW(rt)){for(let i=0;i<8;i++){let gy=sy+i*8+1,gw=4+((y*5+i*3)%4);c.fillStyle='#5cb85c';c.fillRect(s+TS-gw,gy,gw,3)}}
+if(isW(up)&&isW(lt))c.fillStyle='#5cb85c',c.fillRect(s,sy,6,6);
+if(isW(up)&&isW(rt))c.fillStyle='#5cb85c',c.fillRect(s+TS-6,sy,6,6);
+if(isW(dn)&&isW(lt))c.fillStyle='#5cb85c',c.fillRect(s,sy+TS-6,6,6);
+if(isW(dn)&&isW(rt))c.fillStyle='#5cb85c',c.fillRect(s+TS-6,sy+TS-6,6,6);
+// 波浪过渡：草地-马路边界
+if(isP(up)){let e=sprites.getWavyEdge('n',this.af);if(e)c.drawImage(e,s,sy,TS,TS)}
+if(isP(dn)){let e=sprites.getWavyEdge('s',this.af);if(e)c.drawImage(e,s,sy,TS,TS)}
+if(isP(lt)){let e=sprites.getWavyEdge('w',this.af);if(e)c.drawImage(e,s,sy,TS,TS)}
+if(isP(rt)){let e=sprites.getWavyEdge('e',this.af);if(e)c.drawImage(e,s,sy,TS,TS)}
+}
 }
 
 drawText(t,x,y,c='#fff',sz=14,al='left'){this.ctx.fillStyle=c;this.ctx.font=`${sz}px monospace`;this.ctx.textAlign=al;this.ctx.fillText(t,x,y)}
@@ -1046,17 +1905,21 @@ return this.cur.tiles[y][x]
 }
 canPass(x,y){
 let t=this.getTile(x,y);
-if([CFG.T.TREE,CFG.T.WATER,CFG.T.WALL,CFG.T.MTN,CFG.T.LAVA,CFG.T.IWALL,CFG.T.BOOK,CFG.T.BED,CFG.T.COUNTER,CFG.T.ANVIL,CFG.T.ROOF].includes(t))return false;
+if([CFG.T.TREE,CFG.T.WATER,CFG.T.WALL,CFG.T.MTN,CFG.T.LAVA,CFG.T.IWALL,CFG.T.BOOK,CFG.T.BED,CFG.T.COUNTER,CFG.T.ANVIL,CFG.T.ROOF,
+CFG.T.ROOF_TL,CFG.T.ROOF_TM,CFG.T.ROOF_TR,CFG.T.ROOF_BL,CFG.T.ROOF_BM,CFG.T.ROOF_BR,
+CFG.T.WALL_WIN,CFG.T.WALL_PLAIN,CFG.T.WALL_LCOR,CFG.T.WALL_RCOR,
+CFG.T.DOOR_TOP,CFG.T.DOOR_BOT,CFG.T.FOUND_L,CFG.T.FOUND_M,CFG.T.FOUND_R,
+CFG.T.ROCK,CFG.T.FENCE].includes(t))return false;
 // NPC碰撞
 for(let nid of this.getNPCs()){let nd=NPCS[nid];if(nd&&nd.x===x&&nd.y===y)return false}
-// Boss碰撞（2x2范围）
+// Boss碰撞（1x1范围，允许玩家接近触发战斗）
 if(!this.interior&&this.cur&&this.cur.boss){
 let b=this.cur.boss;
-if(x>=b.x&&x<=b.x+1&&y>=b.y&&y<=b.y+1)return false}
+if(x===b.x&&y===b.y)return false}
 return true
 }
 isTallGrass(x,y){return this.getTile(x,y)===CFG.T.TGRASS}
-isDoor(x,y){return this.getTile(x,y)===CFG.T.DOOR}
+isDoor(x,y){let t=this.getTile(x,y);return t===CFG.T.DOOR||t===CFG.T.STEP}
 isExit(x,y){return this.getTile(x,y)===CFG.T.EXIT}
 isChest(x,y){return this.getTile(x,y)===CFG.T.CHEST}
 openChest(x,y){let k=`${this.cid}_${x}_${y}`;if(this.chests[k])return null;this.chests[k]=true;
@@ -1073,15 +1936,42 @@ if(!this.cur)return[];return this.cur.npcs||[]
 render(cx,cy){
 if(this.interior){
 let d=this.interior;let sx=Math.floor(cx),sy=Math.floor(cy);
+// 室内：地面层
+ren.pushTarget(ren.groundCtx);
 for(let y=sy;y<sy+CFG.VY+2;y++)for(let x=sx;x<sx+CFG.VX+2;x++){
 let t=x>=0&&x<d.w&&y>=0&&y<d.h?d.t[y][x]:CFG.T.IWALL;
-ren.drawTile(x,y,t,cx,cy,d.w,d.h)}
+if(ren.isGroundTile(t))ren.drawTile(x,y,t,cx,cy,d.w,d.h)}
+// 室内：物件层
+ren.pushTarget(ren.objCtx);
+for(let y=sy;y<sy+CFG.VY+2;y++)for(let x=sx;x<sx+CFG.VX+2;x++){
+let t=x>=0&&x<d.w&&y>=0&&y<d.h?d.t[y][x]:CFG.T.IWALL;
+if(!ren.isGroundTile(t))ren.drawTile(x,y,t,cx,cy,d.w,d.h)}
+ren.popTarget();ren.popTarget();
 return
 }
 if(!this.cur)return;
 let sx=Math.floor(cx),sy=Math.floor(cy);
+// 通行1：地面层
+ren.pushTarget(ren.groundCtx);
 for(let y=sy;y<sy+CFG.VY+2;y++)for(let x=sx;x<sx+CFG.VX+2;x++){
-let t=this.getTile(x,y);ren.drawTile(x,y,t,cx,cy,this.cur.w,this.cur.h)}
+let t=this.getTile(x,y);
+if(ren.isGroundTile(t))ren.drawTile(x,y,t,cx,cy,this.cur.w,this.cur.h)}
+// Autotile边缘过渡
+for(let y=sy;y<sy+CFG.VY+2;y++)for(let x=sx;x<sx+CFG.VX+2;x++){
+let t=this.getTile(x,y);
+if(ren.isGroundTile(t))ren.drawAutotile(x,y,t,cx,cy,this)}
+ren.popTarget();
+// 通行2：物件层（按Y轴排序实现正确遮挡）
+ren.pushTarget(ren.objCtx);
+let objs=[];
+for(let y=sy;y<sy+CFG.VY+2;y++)for(let x=sx;x<sx+CFG.VX+2;x++){
+let t=this.getTile(x,y);
+if(!ren.isGroundTile(t))objs.push({x,y,t})}
+objs.sort((a,b)=>a.y-b.y);
+for(let o of objs){
+if(o.t===CFG.T.TREE)ren.drawTreeLarge(o.x,o.y,cx,cy);
+else ren.drawTile(o.x,o.y,o.t,cx,cy,this.cur.w,this.cur.h)}
+ren.popTarget();
 }
 gen(id,x,y){
 let d=MAPS[id],w=d.w,h=d.h;
@@ -1100,51 +1990,106 @@ case'ruins':return this.gRuins(x,y);
 case'dragon':return this.gDragon(x,y);
 }return CFG.T.GRASS
 }
+// 建筑图块生成辅助函数
+bldgTile(x,y,bx,by,bw,bh,doorRx){
+let rx=x-bx,ry=y-by,w=bw-1,h=bh-1;
+// 屋顶行 (前2行)
+if(ry===0){if(rx===0)return CFG.T.ROOF_TL;if(rx===w)return CFG.T.ROOF_TR;return CFG.T.ROOF_TM}
+if(ry===1){if(rx===0)return CFG.T.ROOF_BL;if(rx===w)return CFG.T.ROOF_BR;return CFG.T.ROOF_BM}
+// 阴影行 (最后1行)
+if(ry===h)return CFG.T.SHADOW;
+// 地基行 (倒数第2行)
+if(ry===h-1){
+if(rx===0)return CFG.T.FOUND_L;if(rx===w)return CFG.T.FOUND_R;
+if(rx===doorRx)return CFG.T.STEP;return CFG.T.FOUND_M}
+// 门上方
+if(ry===h-3&&rx===doorRx)return CFG.T.DOOR_TOP;
+// 门下方
+if(ry===h-2&&rx===doorRx)return CFG.T.DOOR_BOT;
+// 墙壁行
+if(ry===2&&(rx===1||rx===3||rx===5||rx===7||rx===9)&&rx!==doorRx)return CFG.T.WALL_WIN;
+return CFG.T.WALL_PLAIN
+}
 gVillage(x,y){
-// 主角家 - 门在墙之前检查
-if(x===18&&y===18)return CFG.T.DOOR;
-if(x>=15&&x<=22&&y>=12&&y<=18)return CFG.T.WALL;
+// === 主角家 (8x7, 门在rx=3) ===
+if(x>=15&&x<=22&&y>=12&&y<=18)return this.bldgTile(x,y,15,12,8,7,3);
 // Boss房
 if(x>=24&&x<=31&&y>=12&&y<=18)return CFG.T.DEV_HOUSE;
-// 村长家
-if(x===75&&y===20)return CFG.T.DOOR;
-if(x>=70&&x<=80&&y>=12&&y<=20)return CFG.T.WALL;
-// 商人屋
-if(x===50&&y===32)return CFG.T.DOOR;
-if(x>=45&&x<=55&&y>=25&&y<=32)return CFG.T.WALL;
-// 旅馆
-if(x===75&&y===62)return CFG.T.DOOR;
-if(x>=70&&x<=80&&y>=55&&y<=62)return CFG.T.WALL;
-// 铁匠铺
-if(x===20&&y===62)return CFG.T.DOOR;
-if(x>=15&&x<=25&&y>=55&&y<=62)return CFG.T.WALL;
+// === 村长家 (11x9, 门在rx=5) ===
+if(x>=70&&x<=80&&y>=12&&y<=20)return this.bldgTile(x,y,70,12,11,9,5);
+// === 商人屋 (11x8, 门在rx=5) ===
+if(x>=45&&x<=55&&y>=25&&y<=32)return this.bldgTile(x,y,45,25,11,8,5);
+// === 旅馆 (11x8, 门在rx=5) ===
+if(x>=70&&x<=80&&y>=55&&y<=62)return this.bldgTile(x,y,70,55,11,8,5);
+// === 铁匠铺 (11x8, 门在rx=5) ===
+if(x>=15&&x<=25&&y>=55&&y<=62)return this.bldgTile(x,y,15,55,11,8,5);
 // 喷泉
 if(x>=47&&x<=52&&y>=42&&y<=47)return CFG.T.FOUNTAIN;
-// 道路
-if((y===40&&x>=10&&x<=90)||(x===50&&y>=10&&y<=78)||(y===35&&x>=20&&x<=80))return CFG.T.PATH;
+// 道路 - 2格宽
+if((y===39||y===40)&&x>=10&&x<=90)return CFG.T.PATH;
+if((x===49||x===50)&&y>=10&&y<=78)return CFG.T.PATH;
+if((y===34||y===35)&&x>=20&&x<=80)return CFG.T.PATH;
+// 装饰物
 if((x===15||x===85)&&(y===25||y===65))return CFG.T.FLOWER;
 if((x===10&&y===10)||(x===90&&y===10)||(x===10&&y===70)||(x===90&&y===70))return CFG.T.TORCH;
 if(x===49&&y===78)return CFG.T.GATE;
 if((x===47||x===51)&&y===77)return CFG.T.TORCH;
 if((x===45&&y===40)||(x===55&&y===40))return CFG.T.FLOWER;
+// 花丛装饰
+// Coromon decorations
+if((x===20||x===25||x===30)&&(y===20||y===25))return CFG.T.HEDGE;
+if((x===72||x===77||x===82)&&(y===15||y===20))return CFG.T.HEDGE;
+if((x===48||x===52)&&y===40)return CFG.T.LANTERN;
+if((x===48||x===52)&&y===35)return CFG.T.LANTERN;
+if((x*11+y*19)%43<3)return CFG.T.FLOWER;
 return CFG.T.GRASS
 }
 gGrass(x,y){
-if((y===40&&x>=0&&x<=100)||(x===50&&y>=0&&y<=80))return CFG.T.PATH;
-if(x>=20&&x<=80&&y>=20&&y<=60&&Math.random()<0.25)return CFG.T.TGRASS;
-if(Math.random()<0.04)return CFG.T.FLOWER;
+// 湖泊 - 翡翠草原中心的大湖（上移避开路径y=39/40）
+let dx=x-32,dy=y-28;
+if(dx*dx/(9*9)+dy*dy/(7*7)<=1)return CFG.T.WATER;
+// 主路径 - 2格宽
+if((y===39||y===40)&&x>=0&&x<=100)return CFG.T.PATH;
+if((x===49||x===50)&&y>=0&&y<=80)return CFG.T.PATH;
+// 传送点
 if(x===49&&y===0)return CFG.T.PATH;
 if(x===49&&y===1)return CFG.T.GATE;
 if((x===47||x===51)&&y===2)return CFG.T.TORCH;
+// 高草区域 - 更大范围
+if(x>=15&&x<=85&&y>=15&&y<=65&&Math.random()<0.22)return CFG.T.TGRASS;
+// 装饰物 - 花朵（更多）
+if(Math.random()<0.06)return CFG.T.FLOWER;
+// 装饰物 - 岩石
+if((x*17+y*23)%47<2)return CFG.T.ROCK;
+// 花丛装饰带
+if((y===25||y===55)&&x>=20&&x<=80&&(x*7)%5<1)return CFG.T.FLOWER;
+// 隐藏宝箱区域
 if(x>=95&&y>=75)return CFG.T.ALTAR;
+// 散落花朵
+if((x*13+y*31)%67<3)return CFG.T.FLOWER;
 return CFG.T.GRASS
 }
 gForest(x,y){
-if((y===40&&x>=0&&x<=100)||(x===50&&y>=0&&y<=80))return CFG.T.PATH;
+// 湖泊 - 幽暗森林中的小湖
+let dx=x-65,dy=y-25;
+if(dx*dx/(6*6)+dy*dy/(5*5)<=1)return CFG.T.WATER;
+// 主路径 - 2格宽
+if((y===39||y===40)&&x>=0&&x<=100)return CFG.T.PATH;
+if((x===49||x===50)&&y>=0&&y<=80)return CFG.T.PATH;
+// 传送点
 if((x===1||x===98)&&y===40)return CFG.T.GATE;
 if((x===1||x===98)&&(y===38||y===42))return CFG.T.TORCH;
-if(Math.random()<0.3)return CFG.T.TREE;
-if(Math.random()<0.12)return CFG.T.TGRASS;
+// 树木 - 降低密度，路径附近2格不生成树木
+let nearPath=(y>=37&&y<=42)||(x>=47&&x<=52);
+if(!nearPath&&Math.random()<0.15)return CFG.T.TREE;
+// 高草
+if(Math.random()<0.14)return CFG.T.TGRASS;
+// 装饰物 - 花朵
+if(Math.random()<0.04)return CFG.T.FLOWER;
+// 装饰物 - 岩石
+if((x*19+y*29)%53<2)return CFG.T.ROCK;
+// 花丛装饰
+if((x*11+y*37)%71<2)return CFG.T.FLOWER;
 return CFG.T.GRASS
 }
 gVolcano(x,y){
@@ -1191,27 +2136,33 @@ return CFG.T.GRASS
 class Player{
 constructor(){
 this.x=49;this.y=40;this.dir='down';this.moving=false;
+// 平滑移动动画
+this.visualX=49;this.visualY=40;
+this.slideFromX=49;this.slideFromY=40;
+this.slideFrames=0;this.slideMaxFrames=9;
 this.name='勇者';this.lv=1;this.exp=0;this.gold=100;
 this.hp=100;this.mhp=100;this.mp=50;this.mmp=50;
 this.atk=10;this.def=5;this.spd=10;
 this.equip={weapon:null,armor:null,acc:null};
 this.skills=[{...SKILLS[0]},{...SKILLS[6]}];
 this.inv=[];this.mats=[];this.status=[];this.fav={};this.curMap='village';
-this.caught=[];this.achieves=[];this.kills={};
+this.caught=[];this.achieves=[];this.kills={};this.hChests={};
 this.inInterior=false;this.interiorId=null
 }
 move(dx,dy){
 let nx=this.x+dx,ny=this.y+dy;
 if(dx>0)this.dir='right';if(dx<0)this.dir='left';
 if(dy>0)this.dir='down';if(dy<0)this.dir='up';
-if(map.canPass(nx,ny)){this.x=nx;this.y=ny;this.moving=true;
+if(map.canPass(nx,ny)){
+this.slideFromX=this.x;this.slideFromY=this.y;
+this.x=nx;this.y=ny;this.slideFrames=0;this.moving=true;
 let tp=map.checkTp(nx,ny);if(tp)this.teleport(tp.t,tp.tx,tp.ty);
 return true}
 this.moving=false;return false
 }
-teleport(id,x,y){this.curMap=id;this.x=x;this.y=y;map.load(id);ui.msg(`到达了${MAPS[id].n}！`)}
-enterInterior(id){this.inInterior=true;this.interiorId=id;map.loadInterior(id);this.x=Math.floor(INTERIORS[id].w/2);this.y=INTERIORS[id].h-3}
-exitInterior(){let r=map.exitInterior();if(r){this.inInterior=false;this.interiorId=null;this.curMap=r.map;this.x=r.x;this.y=r.y;map.load(r.map)}}
+teleport(id,x,y){this.curMap=id;this.x=x;this.y=y;this.visualX=x;this.visualY=y;this.slideFrames=this.slideMaxFrames;map.load(id);ui.msg(`到达了${MAPS[id].n}！`)}
+enterInterior(id){this.inInterior=true;this.interiorId=id;map.loadInterior(id);this.x=Math.floor(INTERIORS[id].w/2);this.y=INTERIORS[id].h-3;this.visualX=this.x;this.visualY=this.y;this.slideFrames=this.slideMaxFrames}
+exitInterior(){let r=map.exitInterior();if(r){this.inInterior=false;this.interiorId=null;this.curMap=r.map;this.x=r.x;this.y=r.y;this.visualX=r.x;this.visualY=r.y;this.slideFrames=this.slideMaxFrames;map.load(r.map)}}
 gainExp(n){this.exp+=n;while(this.exp>=this.nextExp()&&this.lv<50)this.lvUp()}
 nextExp(){return this.lv*50}
 lvUp(){this.lv++;this.mhp+=20;this.hp=this.mhp;this.mmp+=5;this.mp=this.mmp;this.atk+=3;this.def+=2;
@@ -1234,7 +2185,16 @@ hasItem(id,n=1){let i=this.inv.find(x=>x.id===id);return i&&i.count>=n}
 equipItem(item){let sl=item.slot;if(this.equip[sl])this.unequip(sl);this.equip[sl]=item;this.removeInv(item.id,1);ui.msg(`装备了${item.name}！`)}
 unequip(sl){if(!this.equip[sl])return;let i=this.equip[sl];this.addInv(i.id,1);this.equip[sl]=null}
 rest(){this.hp=this.mhp;this.mp=this.mmp;ui.msg('休息完毕！HP/MP已恢复！')}
-render(cx,cy){ren.drawChar(this.x,this.y,this.dir,'player',cx,cy,this.moving)}
+updateVisual(){
+if(this.slideFrames<this.slideMaxFrames){
+this.slideFrames++;
+let t=this.slideFrames/this.slideMaxFrames;
+t=t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+this.visualX=this.slideFromX+(this.x-this.slideFromX)*t;
+this.visualY=this.slideFromY+(this.y-this.slideFromY)*t;
+}else{this.visualX=this.x;this.visualY=this.y}
+}
+render(cx,cy){ren.drawChar(this.visualX,this.visualY,this.dir,'player',cx,cy,this.moving)}
 }
 
 // ============================================================
@@ -1245,7 +2205,8 @@ constructor(id,data,isBoss=false){
 this.id=id;this.name=data.n;this.emoji=data.e;
 this.hp=data.hp;this.mhp=data.hp;this.atk=data.atk;this.def=data.def;
 this.exp=data.exp;this.gold=data.gold;this.el=data.el;
-this.weak=data.weak||null;this.drops=data.d||[];this.isBoss=isBoss;this.cr=data.cr||0;this.status=[];this.isFinal=data.isFinal||false
+this.weak=data.weak||null;this.drops=data.d||[];this.isBoss=isBoss;this.cr=data.cr||0;this.status=[];this.isFinal=data.isFinal||false;
+this.behavior=data.behavior||null;this.revived=false;this.adapted=false
 }
 dmg(d){this.hp=Math.max(0,this.hp-d);return this.hp<=0}
 alive(){return this.hp>0}
@@ -1262,7 +2223,9 @@ this.animT=0;this.animType='';this.shakeX=0;this.shakeY=0;this.flashT=0;
 this.dispHpM=0;this.dispHpP=0;this.textTimer=0;this.fullText='';this.dispChars=0;
 this.phase='intro';this.phaseT=0;this.slideX=0;
 // 攻击动画系统
-this.atkAnim='none';this.atkAnimT=0;this.atkAnimDur=45;this.atkSavedX=0;this.atkSavedY=0}
+this.atkAnim='none';this.atkAnimT=0;this.atkAnimDur=45;this.atkSavedX=0;this.atkSavedY=0;
+// 连击系统
+this.combo={count:0,elem:null};this.turnCnt=0;this.lastPElem='normal'}
 start(id,isBoss=false){
 let d=isBoss?BOSS[id]:MONS[id];if(!d)return;
 this.m=new Monster(id,d,isBoss);this.on=true;this.turn='p';this.log=[];this.st='action';this.sa=0;
@@ -1271,7 +2234,14 @@ this.phase='intro';this.phaseT=0;this.slideX=400;
 this.fullText=isBoss?`${this.m.name}出现了！要战斗了！`:`野生的${this.m.name}出现了！`;
 this.dispChars=0;this.textTimer=0;
 if(isBoss&&this.m.weak)this.fullText+=` 弱点：${this.m.weak}`;
+this.combo={count:0,elem:null};this.turnCnt=0;this.lastPElem='normal'
 }
+getComboMult(elem){
+const COMBO_MULT=[1,1.2,1.5,1.8,2.2,3];
+if(this.combo.elem===elem){this.combo.count=Math.min(this.combo.count+1,COMBO_MULT.length-1)}
+else{this.combo.count=0;this.combo.elem=elem}
+if(this.combo.count>0)this.add(`连击 x${this.combo.count}！(${COMBO_MULT[this.combo.count]}倍)`);
+return COMBO_MULT[this.combo.count]}
 add(t){this.log.unshift(t);if(this.log.length>5)this.log.pop()}
 act(a){
 if(this.turn!=='p')return;
@@ -1279,10 +2249,12 @@ if(a==='atk')this.pAtk();else if(a==='skill')this.st='skill';else if(a==='item')
 else if(a==='run')this.esc()
 }
 pAtk(){
-if(this.m.isFinal&&!player.mats.some(m=>m.id==='genesis_k')){this.add('普通攻击无效！需要创世之钥！');this.turn='m';setTimeout(()=>this.mTurn(),800);return}
+if(this.m.isFinal&&!player.mats.some(m=>m.id==='genesis_k')){this.add('普通攻击无效！需要创世之钥！');this.turn='m';setTimeout(()=>this.mTurn(),1200);return}
 let d=this.calc(player.totalAtk(),this.m.def);
 if(this.m.isFinal)d=Math.max(1,Math.floor(d*0.3));
 let cr=Math.random()<CFG.CRIT;if(cr){d=Math.floor(d*CFG.CRIT_M)}
+let cm=this.getComboMult('normal');d=Math.floor(d*cm);
+this.lastPElem='normal';
 // 触发冲刺动画
 this.atkAnim='rush';this.atkAnimT=0;this.atkDur=d;this.atkCrit=cr;
 this.turn='anim'
@@ -1292,9 +2264,11 @@ if(i>=player.skills.length)return;let s=player.skills[i];
 if(player.mp<s.mp){this.add('MP不足！');return}
 player.mp-=s.mp;
 if(s.type==='phys'||s.type==='magic'){
-if(this.m.isFinal&&!player.mats.some(m=>m.id==='genesis_k')){this.add('技能无效！需要创世之钥！');this.turn='m';this.st='action';setTimeout(()=>this.mTurn(),800);return}
+if(this.m.isFinal&&!player.mats.some(m=>m.id==='genesis_k')){this.add('技能无效！需要创世之钥！');this.turn='m';this.st='action';setTimeout(()=>this.mTurn(),1200);return}
 let base=s.type==='phys'?player.totalAtk():Math.floor(player.totalAtk()*1.2);
 let d=this.calc(base,this.m.def);let em=this.getEm(s.elem,this.m.el);d=Math.floor(d*em);
+let cm=this.getComboMult(s.elem);d=Math.floor(d*cm);
+this.lastPElem=s.elem;
 if(this.m.weak&&s.elem===this.m.weak){d*=2;this.add('效果拔群！')}
 if(s.crit&&Math.random()<s.crit){d=Math.floor(d*CFG.CRIT_M);this.add('暴击！')}
 if(s.hpCost){let loss=Math.floor(player.mhp*s.hpCost);player.hp=Math.max(1,player.hp-loss)}
@@ -1302,7 +2276,7 @@ this.m.dmg(d);this.add(`${s.name}，${d}伤害！`);
 if(s.status)this.mStatus(s.status)
 }else if(s.type==='heal'){let a=Math.floor(player.mhp*s.pow);player.hp=Math.min(player.mhp,player.hp+a);this.add(`${s.name}，恢复${a}HP！`)}
 else if(s.type==='buff'){player.status.push({type:s.status,dur:3});this.add(`${s.name}！`)}
-if(!this.m.alive())this.win();else{this.turn='m';this.st='action';setTimeout(()=>this.mTurn(),800)}
+if(!this.m.alive())this.win();else{this.turn='m';this.st='action';setTimeout(()=>this.mTurn(),1200)}
 }
 useItem(id){
 let item=ITEMS[id];if(!item)return;
@@ -1312,18 +2286,47 @@ else if(item.eff==='cure'){player.status=player.status.filter(s=>s.type!==item.v
 else if(item.eff==='escape'){this.add('逃跑成功！');this.end();return}
 else if(item.eff==='buff_atk'){player.status.push({type:'berserk',dur:item.dur});this.add('攻击力提升！')}
 else if(item.eff==='buff_def'){player.status.push({type:'shield',dur:item.dur});this.add('防御力提升！')}
-player.removeInv(id,1);this.turn='m';this.st='action';setTimeout(()=>this.mTurn(),800)
+player.removeInv(id,1);this.turn='m';this.st='action';setTimeout(()=>this.mTurn(),1200)
 }
 esc(){if(this.m.isBoss){this.add('无法逃跑！');return}
-if(Math.random()<CFG.ESC){this.add('逃跑成功！');this.end()}else{this.add('逃跑失败！');this.turn='m';setTimeout(()=>this.mTurn(),800)}}
+if(Math.random()<CFG.ESC){this.add('逃跑成功！');this.end()}else{this.add('逃跑失败！');this.turn='m';setTimeout(()=>this.mTurn(),1200)}}
 mTurn(){
 if(!this.m||!this.m.alive())return;
 if(this.m.status.some(s=>s.type==='freeze'||s.type==='stun')){this.add(`${this.m.name}无法行动！`);this.m.status=this.m.status.filter(s=>s.type!=='freeze'&&s.type!=='stun');this.turn='p';return}
+this.turnCnt++;
+if(this.checkBehavior()){this.pStatus();if(player.hp<=0)this.lose();else{this.turn='p';this.st='action'};return}
 let d=this.calc(this.m.atk,player.totalDef());
 if(player.hasBuff('shield'))d=Math.floor(d*0.5);
+if(this.m.status.some(s=>s.type==='berserk'))d=Math.floor(d*1.5);
 player.hp=Math.max(0,player.hp-d);this.add(`${this.m.name}攻击，${d}伤害！`);
 this.pStatus();if(player.hp<=0)this.lose();else{this.turn='p';this.st='action'}
 }
+checkBehavior(){
+if(!this.m||!this.m.behavior)return false;
+let bh=this.m.behavior,hpR=this.m.hp/this.m.mhp;
+// 狼：HP<50%召唤同伴
+if(bh==='wolf'&&hpR<0.5&&!this.m._summoned){
+this.m._summoned=true;let heal=Math.floor(this.m.mhp*0.2);
+this.m.hp=Math.min(this.m.mhp,this.m.hp+heal);
+this.add(`${this.m.name}嚎叫召唤同伴！恢复${heal}HP！`);return true}
+// 蝙蝠：HP<30%逃跑
+if(bh==='bat'&&hpR<0.3&&!this.m._fled){
+this.m._fled=true;this.add(`${this.m.name}惊慌逃跑！`);
+this.m.hp=0;this.win();return true}
+// 树精：每3回合防御
+if(bh==='treant'&&this.turnCnt%3===0){
+this.m.def=Math.floor(this.m.def*1.5);this.m.status.push({type:'shield',dur:1});
+this.add(`${this.m.name}进入防御姿态！DEF提升！`);return true}
+// 火蜥蜴：HP<20%暴走
+if(bh==='fire_salamander'&&hpR<0.2&&!this.m._berserked){
+this.m._berserked=true;this.m.atk=Math.floor(this.m.atk*2);
+this.m.status.push({type:'berserk',dur:99});
+this.add(`${this.m.name}进入暴走状态！ATK翻倍！`);return true}
+// 龙裔：被克制攻击后适应
+if(bh==='dragon_kin'&&this.lastPElem===this.m.weak&&!this.m.adapted){
+this.m.adapted=true;this.m.def=Math.floor(this.m.def*1.3);
+this.add(`${this.m.name}适应了${this._elemName(this.lastPElem)}属性！DEF提升！`);return true}
+return false}
 calc(a,d){return Math.max(1,Math.floor(a*(1+Math.random()*0.1)-d*0.5))}
 getEm(a,d){if(!a||!d||a==='normal')return 1;let c=CFG.ELEM[a];if(!c)return 1;if(c.strong===d)return 1.5;if(c.weak===d)return 0.5;return 1}
 mStatus(t){let s={poison:{n:'中毒',dur:3},burn:{n:'灼烧',dur:3},freeze:{n:'冰冻',dur:1},stun:{n:'眩晕',dur:1}}[t];if(s){this.m.status.push({type:t,dur:s.dur});this.add(`${this.m.name}${s.n}！`)}}
@@ -1332,6 +2335,11 @@ if(e.type==='poison'){let d=Math.floor(player.mhp*0.05);player.hp=Math.max(0,pla
 if(e.type==='burn'){let d=Math.floor(player.mhp*0.03);player.hp=Math.max(0,player.hp-d);this.add(`灼烧！${d}伤害`)}
 e.dur--;return e.dur>0})}
 win(){
+// 骷髅：死亡时复活一次
+if(this.m.behavior==='skeleton'&&!this.m.revived){
+this.m.revived=true;this.m.hp=Math.floor(this.m.mhp*0.5);
+this.add(`${this.m.name}从死亡中复活！恢复50%HP！`);
+this.turn='p';this.st='action';return}
 this.add(`击败${this.m.name}！${this.m.exp}EXP ${this.m.gold}Gold`);
 player.gainExp(this.m.exp);player.gold+=this.m.gold;
 for(let id of this.m.getDrops()){let d=ITEMS[id]||MATS[id];if(d){this.add(`${d.name}！`);if(ITEMS[id])player.addInv(id,1);else player.addMat(id,1)}}
@@ -1339,11 +2347,12 @@ if(!player.kills[this.m.id])player.kills[this.m.id]=0;player.kills[this.m.id]++;
 // Boss击败后消失
 if(this.m.isBoss&&map.cur){map.cur.boss=null}
 if(this.m.isFinal){this.add('"恭喜你通关了！"');this.add('"但这个世界还会继续..."');player.achieves.push('clear')}
-setTimeout(()=>this.end(),1200)
+this.combo={count:0,elem:null};this.turnCnt=0;this.lastPElem='normal';
+setTimeout(()=>this.end(),2000)
 }
 lose(){this.add('被击败了...失去一半金币');player.gold=Math.floor(player.gold/2);player.hp=Math.floor(player.mhp*0.3);player.mp=Math.floor(player.mmp*0.3);
-player.curMap='village';player.x=49;player.y=40;player.inInterior=false;player.interiorId=null;map.interior=null;map.load('village');setTimeout(()=>this.end(),1500)}
-end(){this.on=false;this.m=null;this.log=[];this.st='action'}
+player.curMap='village';player.x=49;player.y=40;player.inInterior=false;player.interiorId=null;map.interior=null;map.load('village');setTimeout(()=>this.end(),2500)}
+end(){this.on=false;this.m=null;this.log=[];this.st='action';this.combo={count:0,elem:null};this.turnCnt=0;this.lastPElem='normal';if(typeof state!=='undefined')state='playing'}
 render(){
 if(!this.on||!this.m)return;let c=ren.ctx;
 // 更新动画
@@ -1359,18 +2368,18 @@ this.dispHpP+=(player.hp-this.dispHpP)*0.15;if(Math.abs(this.dispHpP-player.hp)<
 // 攻击动画状态机
 if(this.atkAnim!=='none'){
 this.atkAnimT++;
-if(this.atkAnim==='rush'&&this.atkAnimT>=15){
+if(this.atkAnim==='rush'&&this.atkAnimT>=30){
 // 冲刺到位→命中
 this.atkAnim='hit';this.atkAnimT=0;
-this.flashT=15;this.shakeX=8;
+this.flashT=25;this.shakeX=10;
 this.m.dmg(this.atkDur);
 if(this.atkCrit)this.add('暴击！');
 this.add(`攻击${this.m.name}，${this.atkDur}伤害！`);
 audio.hit()}
-else if(this.atkAnim==='hit'&&this.atkAnimT>=10){
+else if(this.atkAnim==='hit'&&this.atkAnimT>=20){
 // 命中停留→退回
 this.atkAnim='return';this.atkAnimT=0}
-else if(this.atkAnim==='return'&&this.atkAnimT>=15){
+else if(this.atkAnim==='return'&&this.atkAnimT>=25){
 // 退回完成→结算
 this.atkAnim='none';this.atkAnimT=0;
 if(!this.m.alive())this.win();
@@ -1400,7 +2409,7 @@ let monsterFlash=this.flashT>0&&this.flashT%4<2;
 let atkHit=this.atkAnim==='hit'&&this.atkAnimT<10;
 if(monsterFlash||atkHit){c.globalAlpha=0.6}
 // 查找怪物像素精灵
-let monFrame=this.af%20<10?0:1;
+let monFrame=Math.floor(this.af/5)%4;
 let monSpr=sprites.getMon(this.m.id,monFrame);
 if(!monSpr&&this.m.isBoss){
 // Boss用bossSprites
@@ -1436,6 +2445,12 @@ c.fillStyle='#fff';c.font='11px monospace';c.fillText('HP',px+20,py+75);
 // 属性
 if(this.m.el!=='normal'){c.fillStyle=this._elemColor(this.m.el);c.font='13px monospace';
 c.fillText(this._elemName(this.m.el),px+280,py+75)}
+// 连击显示
+if(this.combo.count>0){const COMBO_MULT=[1,1.2,1.5,1.8,2.2,3];
+c.fillStyle=this.combo.count>=4?'#ff4500':this.combo.count>=2?'#f1c40f':'#fff';
+c.font=`bold ${16+this.combo.count*2}px monospace`;c.textAlign='center';
+c.fillText(`COMBO x${this.combo.count} (${COMBO_MULT[this.combo.count]}倍)`,px+180,py+95);
+c.textAlign='left'}
 
 // === 玩家平台 ===
 c.fillStyle='#3d6b1a';c.beginPath();c.ellipse(sx+350,600+sy,100,15,0,0,Math.PI*2);c.fill();
@@ -1643,7 +2658,7 @@ let mn=player.inInterior?(INTERIORS[player.interiorId]?.n||'室内'):(MAPS[playe
 c.fillText(mn,640,132);
 if(!player.inInterior&&map.cur){let sc=5,ox=380,oy=150;
 for(let y=0;y<map.cur.h;y+=2)for(let x=0;x<map.cur.w;x+=2){let t=map.getTile(x,y),cl;
-switch(t){case 0:case 6:cl='#4a7c59';break;case 1:cl='#2d5a27';break;case 2:cl='#3498db';break;case 3:cl='#95a5a6';break;case 4:cl='#8b4513';break;case 11:cl='#ff4500';break;case 10:cl='#696969';break;case 12:cl='#556b2f';break;default:cl='#4a7c59'}
+switch(t){case 0:case 6:case 7:cl='#4a7c59';break;case 1:cl='#2d5a27';break;case 2:cl='#3498db';break;case 3:case 8:cl='#95a5a6';break;case 4:case 5:cl='#8b4513';break;case 11:cl='#ff4500';break;case 10:cl='#696969';break;case 12:cl='#556b2f';break;case 50:cl='#808080';break;case 51:cl='#A07848';break;default:cl='#4a7c59'}
 c.fillStyle=cl;c.fillRect(ox+x*sc,oy+y*sc,sc*2,sc*2)}
 for(let nid of map.getNPCs()){let nd=NPCS[nid];if(nd){c.fillStyle='#f1c40f';c.beginPath();c.arc(ox+nd.x*sc,oy+nd.y*sc,3,0,Math.PI*2);c.fill()}}
 if(map.cur.boss){let b=map.cur.boss;c.fillStyle='#e74c3c';c.beginPath();c.arc(ox+b.x*sc,oy+b.y*sc,4,0,Math.PI*2);c.fill()}
@@ -1670,7 +2685,7 @@ save(){
 let d={p:{x:player.x,y:player.y,dir:player.dir,name:player.name,lv:player.lv,exp:player.exp,gold:player.gold,
 hp:player.hp,mhp:player.mhp,mp:player.mp,mmp:player.mmp,atk:player.atk,def:player.def,
 curMap:player.curMap,inv:player.inv,mats:player.mats,equip:player.equip,skills:player.skills,
-fav:player.fav,caught:player.caught,achieves:player.achieves,kills:player.kills,
+fav:player.fav,caught:player.caught,achieves:player.achieves,kills:player.kills,hChests:player.hChests||{},
 inInterior:player.inInterior,interiorId:player.interiorId},
 chests:map.chests,ts:Date.now()};
 try{localStorage.setItem(this.key,JSON.stringify(d));ui.msg('已保存！');return true}catch(e){ui.msg('保存失败！');return false}
@@ -1681,7 +2696,7 @@ let d=JSON.parse(r),p=d.p;
 player.x=p.x;player.y=p.y;player.dir=p.dir;player.name=p.name;player.lv=p.lv;player.exp=p.exp;player.gold=p.gold;
 player.hp=p.hp;player.mhp=p.mhp;player.mp=p.mp||50;player.mmp=p.mmp||50;player.atk=p.atk;player.def=p.def;
 player.curMap=p.curMap;player.inv=p.inv||[];player.mats=p.mats||[];player.equip=p.equip;player.skills=p.skills;
-player.fav=p.fav||{};player.caught=p.caught||[];player.achieves=p.achieves||[];player.kills=p.kills||{};
+player.fav=p.fav||{};player.caught=p.caught||[];player.achieves=p.achieves||[];player.kills=p.kills||{};player.hChests=p.hChests||{};
 player.inInterior=p.inInterior||false;player.interiorId=p.interiorId||null;
 map.chests=d.chests||{};
 if(player.inInterior&&player.interiorId){map.loadInterior(player.interiorId)}else{map.load(player.curMap)}
@@ -1734,6 +2749,7 @@ ren.update();ui.update();ui.updateBar();
 if(encCd>0)encCd--;
 if(doorCd>0)doorCd--;
 if(state==='playing')updatePlay();
+player.updateVisual();
 updateCam()
 }
 
@@ -1752,12 +2768,12 @@ if(Math.random()<0.00003){let m=['远处传来奇怪的声音...','地面微微�
 
 function updateCam(){
 if(player.inInterior&&map.interior){
-let tx=player.x-CFG.VX/2,ty=player.y-CFG.VY/2;
+let tx=player.visualX-CFG.VX/2,ty=player.visualY-CFG.VY/2;
 camX+=(tx-camX)*0.15;camY+=(ty-camY)*0.15;
 camX=Math.max(0,Math.min(camX,map.interior.w-CFG.VX));
 camY=Math.max(0,Math.min(camY,map.interior.h-CFG.VY));return
 }
-let tx=player.x-CFG.VX/2,ty=player.y-CFG.VY/2;
+let tx=player.visualX-CFG.VX/2,ty=player.visualY-CFG.VY/2;
 camX+=(tx-camX)*0.1;camY+=(ty-camY)*0.1;
 camX=Math.max(0,Math.min(camX,CFG.MW-CFG.VX));camY=Math.max(0,Math.min(camY,CFG.MH-CFG.VY))
 }
@@ -1792,7 +2808,6 @@ function checkChest(){
 if(map.isChest(player.x,player.y)){
 let r=map.openChest(player.x,player.y);
 if(r){if(r.t==='g'){player.gold+=r.v;ui.msg(`宝箱！${r.v}金币！`)}else{player.addInv(r.id,1);ui.msg(`宝箱！${ITEMS[r.id].name}！`)}audio.item()}}
-let tp=map.checkTp(player.x,player.y);if(tp)player.teleport(tp.t,tp.tx,tp.ty)
 }
 
 function randEvent(){
@@ -1898,6 +2913,24 @@ if(player.curMap==='volcano'&&cx>=85&&cy>=65){player.teleport('ruins',5,40);ui.m
 if(player.curMap==='castle'&&cx>=85&&cy<=10){player.teleport('dragon',5,40);ui.msg('王座密道！到达龙之巢穴！');return}
 // 祭坛
 if(map.getTile(cx,cy)===CFG.T.ALTAR){player.hp=Math.min(player.mhp,player.hp+80);player.mp=Math.min(player.mmp,player.mp+40);ui.dlgShow('神秘祭坛','远古力量...HP/MP大幅恢复！');audio.heal();return}
+// 隐藏宝箱
+if(checkHiddenChest(cx,cy))return
+}
+
+function checkHiddenChest(x,y){
+if(player.inInterior)return false;
+for(let hc of HIDDEN_CHESTS){
+if(hc.map!==player.curMap||hc.x!==x||hc.y!==y)continue;
+if(player.hChests&&player.hChests[hc.id])continue;
+// 条件检查
+if(hc.cond==='night'&&ren.phase()!=='night'){ui.msg('似乎有什么东西...夜晚再来看看。');return true}
+if(hc.cond==='boss_defeated'){let bd=['boar_t','wolf_kp','dragon_sc','demon_h','swamp_h','ancient_c','ldragon_s'];if(!bd.every(d=>player.mats.some(m=>m.id===d))){ui.msg('宝箱被强大的封印保护着...');return true}}
+if(hc.cond==='has_ancient_c'&&!player.mats.some(m=>m.id==='ancient_c')){ui.msg('需要远古核心才能打开...');return true}
+// 开启宝箱
+if(!player.hChests)player.hChests={};player.hChests[hc.id]=true;
+if(hc.reward.t==='g'){player.gold+=hc.reward.v;ui.msg(`${hc.desc}！${hc.reward.v}金币！`)}
+else{player.addInv(hc.reward.id,1);let it=ITEMS[hc.reward.id];ui.msg(`${hc.desc}！${it?it.name:hc.reward.id}！`)}
+audio.item();return true}return false
 }
 
 function drawMiniMap(){
@@ -1911,10 +2944,34 @@ let sc=Math.min(mw/mapW,mh/mapH);
 let ox=mx+(mw-mapW*sc)/2,oy=my+(mh-mapH*sc)/2;
 for(let y=0;y<mapH;y+=3)for(let x=0;x<mapW;x+=3){
 let t=map.getTile(x,y),cl;
-switch(t){case 0:case 6:case 7:cl='#4a7c59';break;case 1:cl='#2d5a27';break;
-case 2:cl='#3498db';break;case 3:case 8:cl='#95a5a6';break;case 4:case 5:cl='#8b4513';break;
-case 11:cl='#ff4500';break;case 10:cl='#696969';break;case 12:cl='#556b2f';break;
-case 21:cl='#d4a574';break;case 22:cl='#8b6914';break;default:cl='#4a7c59'}
+switch(t){
+case 0:case 6:case 7:cl='#4a7c59';break;
+case 1:cl='#2d5a27';break;
+case 2:cl='#3498db';break;
+case 3:case 8:cl='#95a5a6';break;
+case 4:case 5:cl='#8b4513';break;
+case 10:cl='#696969';break;
+case 11:cl='#ff4500';break;
+case 12:cl='#556b2f';break;
+case 13:cl='#f1c40f';break;
+case 14:cl='#ff8c00';break;
+case 15:cl='#a08060';break;
+case 18:cl='#9b59b6';break;
+case 19:cl='#5dade2';break;
+case 20:cl='#c0392b';break;
+case 21:cl='#d4a574';break;
+case 22:cl='#8b6914';break;
+case 23:case 29:cl='#f1c40f';break;
+case 30:case 31:case 32:cl='#c0392b';break;
+case 33:case 34:case 35:cl='#a93226';break;
+case 36:case 37:case 38:case 39:cl='#b8860b';break;
+case 40:case 41:cl='#6b3a1a';break;
+case 42:case 43:case 44:cl='#808080';break;
+case 45:cl='#a0a0a0';break;
+case 46:cl='#2c2c2c';break;
+case 50:cl='#808080';break;
+case 51:cl='#A07848';break;
+default:cl='#4a7c59'}
 c.fillStyle=cl;c.fillRect(ox+x*sc,oy+y*sc,Math.max(2,sc*3),Math.max(2,sc*3))}
 for(let nid of map.getNPCs()){let nd=NPCS[nid];if(nd){c.fillStyle='#f1c40f';
 c.fillRect(ox+nd.x*sc-1,oy+nd.y*sc-1,3,3)}}
@@ -1929,8 +2986,11 @@ c.fillText(mn,mx+mw/2,my+mh+12)}
 function render(){
 ren.clear();
 if(state==='battle'){battle.render();return}
+ren.clearLayers();
+// 地图双层渲染（MapMgr内部已处理地面层+物件层）
 map.render(camX,camY);
-// NPC
+// NPC和Boss绘制到物件层
+ren.pushTarget(ren.objCtx);
 for(let nid of map.getNPCs()){let nd=NPCS[nid];if(!nd)continue;
 ren.drawChar(nd.x,nd.y,nd.dir||'down','npc',camX,camY,false);
 let sx=(nd.x-camX)*CFG.TS,sy=(nd.y-camY)*CFG.TS;
@@ -1952,6 +3012,9 @@ ren.ctx.font='36px serif';ren.ctx.textAlign='center';ren.ctx.fillText(bo.e,sx+32
 ren.ctx.fillStyle='#ff0';ren.ctx.font='11px monospace';ren.ctx.textAlign='center';ren.ctx.fillText(bo.n,sx+64,sy-4);
 if(bo.weak){ren.ctx.fillStyle='#f1c40f';ren.ctx.font='9px monospace';ren.ctx.fillText(`弱点:${bo.weak}`,sx+64,sy-14)}}}}
 player.render(camX,camY);
+ren.popTarget();
+// 合成双层到主画布
+ren.composite();
 ren.dayNight();ren.drawWeather();
 // 小地图 - 左上角常驻
 drawMiniMap();
